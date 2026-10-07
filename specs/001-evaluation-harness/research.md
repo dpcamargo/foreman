@@ -175,6 +175,24 @@ schema itself.
 **Why**: these are each vendor's own headless paths (constitution IX: no custom agent loop).
 Kanban `--goal` is the route ARCHITECTURE.md §16 already names for A2.
 
+**Where Hermes itself runs**: on the host. Only its tools run in the container (Docker
+*terminal backend*, not Hermes-in-Docker). Credentials therefore stay in the host process. The
+`foreman-arm` profile inherits the root Anthropic login read-only, and nothing credential-like
+is mounted or forwarded into the container (`docker_forward_env` is left empty). Running Hermes
+itself inside a container (Feature 008's always-on track, or Hermes's own Docker image) would
+change two things:
+
+1. The container needs its own Anthropic login: a separate `hermes auth add anthropic` stored
+   in that container's data volume. Do not mount or copy the host `auth.json`. Anthropic OAuth
+   refresh grants are single-use, so two holders of one grant revoke each other on the first
+   refresh. Hermes strips cloned grants for exactly this reason (`hermes_cli/profiles.py`,
+   `strip_cloned_single_use_oauth_grants`).
+2. Credentials and agent tools would share one container. The agent's commands would then
+   need a further sandbox inside it, or the login would be exposed to them. That breaks
+   constitution VI unless the tools are confined again.
+
+Neither applies to 001.
+
 **Alternatives considered**: driving `/goal` through a pseudo-terminal (tmux). Rejected as
 fragile; the Kanban path is supported and machine-readable. For A0, `hermes -z <prompt>
 --usage-file <path>` writes a usage report directly, but prints only the final text. That
