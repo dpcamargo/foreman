@@ -114,6 +114,38 @@ heavy review while lane S includes both, and that each respects its own budget c
 
 ---
 
+### User Story 4 - Classify triage locally, with zero network dependency (Priority: P2)
+
+As the operator, the very first step every task goes through — classifying its task class and
+risk level — runs on a small, local classifier model loaded in-process in the foreman daemon,
+so the one step that touches literally every task never depends on a model provider being
+reachable or inside its quota window.
+
+**Why this priority**: Triage sits upstream of this feature's own router and provider-health
+machinery (User Story 1) — it cannot itself depend on the thing it's about to protect tasks
+from (provider outages, cooldowns). Removing the network dependency from this single universal
+step shrinks the system's external failure surface at near-zero marginal cost, consistent with
+constitution Principle IX (justified here by removing, not adding, a dependency).
+
+**Independent Test**: Can be tested by disabling network access entirely and confirming
+`/task` submissions are still triaged (task class + risk assigned) correctly for a labeled set
+of sample requests.
+
+**Acceptance Scenarios**:
+
+1. **Given** a task request's text, **When** triage runs, **Then** a local classifier model,
+   loaded in-process in the foreman daemon, assigns a task class and risk level without making
+   any network call.
+2. **Given** the local classifier's confidence for a given input falls below a configured
+   threshold, **When** triage evaluates that result, **Then** it falls back to the existing
+   cheap-API-model triage route (Gemini Flash/GPT Luna, per User Story 1's routing) rather than
+   committing to a low-confidence local classification.
+3. **Given** the local classifier model file is missing or fails to load at daemon startup,
+   **When** the daemon starts, **Then** it logs the condition clearly and falls back to the
+   API-based triage route for all tasks, rather than failing task creation outright.
+
+---
+
 ### Edge Cases
 
 - What happens when a route has fewer than 10 historical (route, class) samples? The router
@@ -168,6 +200,15 @@ heavy review while lane S includes both, and that each respects its own budget c
   outcome) to update the Beta-prior statistics used by FR-003 for future routing decisions.
 - **FR-012**: The system MUST expose cost/quota accounting queryable at minimum by provider and
   by time window (supporting the `/budget` command introduced in Feature 003).
+- **FR-013**: The system MUST run triage through a local classifier model, loaded in-process in
+  the foreman daemon, as the primary route for assigning task class and risk level, requiring
+  no network call for the common case.
+- **FR-014**: The system MUST fall back to the existing API-based triage route (Flash/Luna)
+  whenever the local classifier's confidence falls below a configured threshold, or whenever
+  its model file is missing or fails to load at startup.
+- **FR-015**: The local classifier's model weights MUST be pinned by exact version and
+  checksum at install/build time — never pulled as `@latest` — per the project's dependency-
+  pinning practice for anything the daemon auto-loads and runs.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -180,6 +221,9 @@ heavy review while lane S includes both, and that each respects its own budget c
   the Beta-prior success-probability estimate.
 - **TestAuthorResult**: the test-author node's structured output — the test patch and
   confirmation it fails on base.
+- **Local Classifier Model**: a small, host-local encoder model used for triage (task class +
+  risk), pinned by exact version and checksum, loaded in-process by the foreman daemon at
+  startup.
 
 ## Success Criteria *(mandatory)*
 
@@ -197,6 +241,9 @@ heavy review while lane S includes both, and that each respects its own budget c
   blocks dispatch before an overspend occurs rather than detecting it after the fact.
 - **SC-005**: Cross-family rules hold under routing: in no observed run does a reviewer, test
   author, or adjudicator share a model family with the implementer it is meant to check.
+- **SC-006**: With network access disabled, triage still produces a class+risk assignment for
+  100% of submitted tasks in testing, with accuracy on a held-out labeled set within an
+  operator-defined tolerance of the existing API-based baseline.
 
 ## Assumptions
 
@@ -218,3 +265,11 @@ heavy review while lane S includes both, and that each respects its own budget c
   ARCHITECTURE.md §5.4) starts at operator-set defaults (documented in `policy.yaml` comments)
   rather than being derived statistically, since there is not yet enough historical data to
   derive it (that arrives naturally as FR-011's statistics accumulate).
+- The local triage classifier (FR-013–015) runs in-process inside the foreman daemon via a
+  local inference runtime (e.g. ONNX Runtime) loading a quantized encoder model — it is not a
+  separate container, sidecar process, or network service, consistent with constitution
+  Principle IX (minimal, justified infrastructure).
+- The classifier's accuracy is validated against Feature 001's eval-suite task-classification
+  labels before being trusted as the primary triage route; a small pre-trained or few-shot-
+  calibrated encoder classifier is acceptable for v1, since FR-014's confidence-based fallback
+  to the API route covers any cold-start accuracy gap.
