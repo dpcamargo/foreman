@@ -7,6 +7,7 @@ case "$1" in
   --version) echo "Hermes Agent v9.9.9 (2026.10.1)"; echo "Install directory: /x"; exit 0 ;;
   config)
     if [ "$2" = "get" ] && [ -f "$d/config_$3" ]; then cat "$d/config_$3"; exit 0; fi
+    if [ "$2" = "get" ] && [ "$3" != "model" ]; then echo "Config key not set: $3" >&2; exit 1; fi
     echo "default: claude-test"; echo "provider: anthropic"; exit 0 ;;
   chat)
     printf '%s\n' "$@" > "$d/chat_argv"; env > "$d/chat_env"

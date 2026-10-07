@@ -123,3 +123,16 @@ func TestLiveKanbanGoal(t *testing.T) {
 	}
 	t.Logf("T-kanban-goal PASSED: %+v", res)
 }
+
+// TestLiveVerifyProfile checks the real foreman-arm profile without spending tokens.
+func TestLiveVerifyProfile(t *testing.T) {
+	profile := os.Getenv("FOREMAN_HERMES_HOME")
+	if profile == "" {
+		home, _ := os.UserHomeDir()
+		profile = filepath.Join(home, ".hermes", "profiles", "foreman-arm")
+	}
+	if err := VerifyProfile(context.Background(), Config{HermesHome: profile}); err != nil {
+		t.Fatalf("profile %s is not confined: %v", profile, err)
+	}
+	t.Logf("profile %s verified: docker backend, no network, no MCP servers", profile)
+}

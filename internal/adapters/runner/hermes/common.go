@@ -203,6 +203,9 @@ func VerifyProfile(ctx context.Context, cfg Config) error {
 	}
 	get := func(key string) (string, error) {
 		out, err := cfg.run(ctx, "config", "get", key)
+		if err != nil && strings.Contains(err.Error(), "Config key not set") {
+			return "", nil // hermes exits 1 for an unset key (verified, Hermes v0.21.5)
+		}
 		return strings.TrimSpace(string(out)), err
 	}
 	checks := []struct{ key, want string }{

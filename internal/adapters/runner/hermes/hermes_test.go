@@ -281,10 +281,18 @@ func TestVerifyProfile(t *testing.T) {
 	os.WriteFile(filepath.Join(profile, "config.yaml"), []byte("x: 1\n"), 0o644)
 	f.set("config_terminal.backend", "docker\n")
 	f.set("config_terminal.docker_network", "false\n")
+	if err := VerifyProfile(ctx, f.cfg); err != nil { // mcp_servers unset: hermes exits 1, like a fresh profile
+		t.Errorf("confined profile with mcp_servers unset rejected: %v", err)
+	}
 	f.set("config_mcp_servers", "\n")
 	if err := VerifyProfile(ctx, f.cfg); err != nil {
 		t.Errorf("confined profile rejected: %v", err)
 	}
+	os.Remove(filepath.Join(f.bin, "config_terminal.backend")) // unset backend must fail
+	if err := VerifyProfile(ctx, f.cfg); err == nil {
+		t.Error("unset terminal.backend accepted")
+	}
+	f.set("config_terminal.backend", "docker\n")
 	for key, bad := range map[string]string{
 		"terminal.backend":        "local\n",
 		"terminal.docker_network": "true\n",
