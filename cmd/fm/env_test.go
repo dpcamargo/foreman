@@ -4,7 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
+
+var nowForTest = time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
 
 func TestLoadEnv(t *testing.T) {
 	home := func() (string, error) { return "/Users/op", nil }

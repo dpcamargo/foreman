@@ -1,0 +1,28 @@
+{"Time":"2026-10-07T15:06:51.165899-03:00","Action":"start","Package":"example.com/p"}
+{"Time":"2026-10-07T15:06:51.513524-03:00","Action":"run","Package":"example.com/p","Test":"TestFirst"}
+{"Time":"2026-10-07T15:06:51.513588-03:00","Action":"output","Package":"example.com/p","Test":"TestFirst","Output":"=== RUN   TestFirst\n","OutputType":"frame"}
+{"Time":"2026-10-07T15:06:51.51363-03:00","Action":"output","Package":"example.com/p","Test":"TestFirst","Output":"--- PASS: TestFirst (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-07T15:06:51.513641-03:00","Action":"pass","Package":"example.com/p","Test":"TestFirst","Elapsed":0}
+{"Time":"2026-10-07T15:06:51.513647-03:00","Action":"run","Package":"example.com/p","Test":"TestOne"}
+{"Time":"2026-10-07T15:06:51.513651-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"=== RUN   TestOne\n","OutputType":"frame"}
+{"Time":"2026-10-07T15:06:51.513655-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"--- FAIL: TestOne (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-07T15:06:51.516588-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"panic: assignment to entry in nil map [recovered, repanicked]\n"}
+{"Time":"2026-10-07T15:06:51.516618-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"\n"}
+{"Time":"2026-10-07T15:06:51.51663-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"goroutine 20 [running]:\n"}
+{"Time":"2026-10-07T15:06:51.516643-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"testing.tRunner.func1.2({0x1026ba548, 0x1026f0f10})\n"}
+{"Time":"2026-10-07T15:06:51.516655-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"\t/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2123 +0x1a0\n"}
+{"Time":"2026-10-07T15:06:51.516691-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"testing.tRunner.func1()\n"}
+{"Time":"2026-10-07T15:06:51.516704-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"\t/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2126 +0x2c8\n"}
+{"Time":"2026-10-07T15:06:51.516719-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"panic({0x1026ba548?, 0x1026f0f10?})\n"}
+{"Time":"2026-10-07T15:06:51.51673-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"\t/opt/homebrew/Cellar/go/1.27.1/libexec/src/runtime/panic.go:859 +0x120\n"}
+{"Time":"2026-10-07T15:06:51.51674-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"example.com/p.One(...)\n"}
+{"Time":"2026-10-07T15:06:51.516751-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"\t/var/folders/dd/dg4lnwld5212t839rdzvdxc40000gn/T/tmp.ioVXuqh1xg/p.go:2\n"}
+{"Time":"2026-10-07T15:06:51.516761-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"example.com/p.TestOne(0x38c462e54488?)\n"}
+{"Time":"2026-10-07T15:06:51.516785-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"\t/var/folders/dd/dg4lnwld5212t839rdzvdxc40000gn/T/tmp.ioVXuqh1xg/p_test.go:4 +0x34\n"}
+{"Time":"2026-10-07T15:06:51.516798-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"testing.tRunner(0x38c462e54488, 0x1026d73f0)\n"}
+{"Time":"2026-10-07T15:06:51.516808-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"\t/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2193 +0xc4\n"}
+{"Time":"2026-10-07T15:06:51.51683-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"created by testing.(*T).Run in goroutine 1\n"}
+{"Time":"2026-10-07T15:06:51.516841-03:00","Action":"output","Package":"example.com/p","Test":"TestOne","Output":"\t/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2258 +0x3b8\n"}
+{"Time":"2026-10-07T15:06:51.517467-03:00","Action":"fail","Package":"example.com/p","Test":"TestOne","Elapsed":0}
+{"Time":"2026-10-07T15:06:51.517517-03:00","Action":"output","Package":"example.com/p","Output":"FAIL\texample.com/p\t0.351s\n","OutputType":"frame"}
+{"Time":"2026-10-07T15:06:51.517592-03:00","Action":"fail","Package":"example.com/p","Elapsed":0.352}

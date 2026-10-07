@@ -14,6 +14,7 @@ const goodSHA = "0123456789abcdef0123456789abcdef01234567"
 func validRecord() Record {
 	return Record{
 		Source:      SourceManual,
+		TaskType:    TaskTypeCode,
 		Category:    CategoryFeature,
 		Request:     "Add Sub(a, b int) int",
 		RepoURL:     "/tmp/addrepo.git",

@@ -107,21 +107,21 @@ No foreman orchestrator code is involved.
 
 ### Fixtures
 
-- [ ] T012 [P] [US1] Create `testdata/fixtures/addrepo/`:
+- [X] T012 [P] [US1] Create `testdata/fixtures/addrepo/`:
   - `src/`: a minimal Go module at its base state, with no `Sub` function;
   - `request.md`: "Add `Sub(a, b int) int`";
   - `hidden/sub_test.go`: fails on base;
-  - `visible/` (empty);
+  - no `visible/` directory (git can't track an empty one, and `--visible` is optional);
   - `reference.patch`: adds `Sub`;
-  - `hidden-passes-on-base/add_test.go`: tests the existing `Add`;
-  - `hidden-escape/`: a file whose recorded path is `../x_test.go`.
-- [ ] T013 [P] [US1] Create `testdata/fixtures/fizzrepo/`, with the same layout as addrepo and a FizzBuzz feature, and `testdata/fixtures/ambiguous/`. The ambiguous request is deliberately contradictory ("make `Add` return the product, but keep its existing tests passing"); its `hidden/` test fails on base, and it is recorded with `--expects-clarification` later.
-- [ ] T014 [US1] Write `scripts/fixtures.sh`. For each fixture it builds a local git repo from `src/` (one commit), writes `${FOREMAN_HOME:-$HOME/.foreman}/work/fixtures/<name>.git` (bare) and writes `<name>.base` containing that commit's SHA. It must be idempotent, use `set -euo pipefail`, and print what it created.
+  - `hidden-passes-on-base/add_hidden_test.go`: tests the existing `Add` (not `add_test.go`, which would overwrite the repo's own test when hidden tests are copied in);
+  - `hidden-escape/outside_link`: a symlink to `../../outside_test.go` (no `.go` suffix, so `gofmt -l .` doesn't trip on the dangling link).
+- [X] T013 [P] [US1] Create `testdata/fixtures/fizzrepo/`, with the same layout as addrepo and a FizzBuzz feature, and `testdata/fixtures/ambiguous/`. The ambiguous request is deliberately contradictory ("make `Add` return the product, but keep its existing tests passing"); its `hidden/` test fails on base, and it is recorded with `--expects-clarification` later.
+- [X] T014 [US1] Write `scripts/fixtures.sh`. For each fixture it builds a local git repo from `src/` (one commit), writes `${FOREMAN_HOME:-$HOME/.foreman}/work/fixtures/<name>.git` (bare) and writes `<name>.base` containing that commit's SHA. It must be idempotent, use `set -euo pipefail`, and print what it created.
 
 ### Tests (write first, must fail)
 
-- [ ] T015 [P] [US1] Write `internal/adapters/container/gotest_test.go` (plain). It parses recorded `go test -json` streams from `testdata/gotest/*.jsonl` (pass, fail, build failure, panic) into per-test results and pass/fail counts. A build failure gives zero passed and at least one failed, never an empty "all passed".
-- [ ] T016 [P] [US1] Write `internal/adapters/sandbox/git_test.go` (plain; local temp repos only):
+- [X] T015 [P] [US1] Write `internal/adapters/container/gotest_test.go` (plain). It parses recorded `go test -json` streams from `testdata/gotest/*.jsonl` (pass, fail, build failure, panic) into per-test results and pass/fail counts. A build failure gives zero passed and at least one failed, never an empty "all passed".
+- [X] T016 [P] [US1] Write `internal/adapters/sandbox/git_test.go` (plain; local temp repos only):
   - `Prepare` makes a fresh clone at the base commit, from a bare mirror, with `--no-hardlinks`;
   - `.git` is a real directory, not a gitfile (no worktree);
   - hooks don't run: a `post-checkout` hook planted in the mirror writes a sentinel that must not appear;
@@ -131,7 +131,7 @@ No foreman orchestrator code is involved.
   - **planted config does not run**: after `Prepare`, write into the *workspace's* `.git/config` a `core.fsmonitor` command, a `diff.external` command, and a `filter.x.clean` driver (with a matching `.gitattributes`), each of which would create a sentinel file. Run `Export` and assert no sentinel exists and the diff is still correct (research R6, constitution VI);
   - `Destroy` is idempotent and removes `trusted.git`;
   - an unknown base commit returns an error that matches `ErrBaseNotFound`.
-- [ ] T017 [P] [US1] Write `internal/adapters/container/grader_test.go` (build tag `container`):
+- [X] T017 [P] [US1] Write `internal/adapters/container/grader_test.go` (build tag `container`):
   - `TestTestStageHasNoNetwork`: a hidden test dials `1.1.1.1:443` and must get a network error;
   - `TestNoHostMounts`: `/Users` is absent;
   - `TestNoHostEnv`: the host `HOME` and `PATH` values are not visible;
@@ -141,8 +141,8 @@ No foreman orchestrator code is involved.
   - `TestBadImageIsInfraError`: a nonexistent image returns an error, never a zero-pass `GradeOutput`;
   - `TestFullSuite`: with a `full_test_command`, base gives pass, and a patch that breaks an unrelated existing test gives full-suite fail;
   - `TestFetchEnv`: the dependency-fetch container gets exactly `GOPROXY=https://proxy.golang.org`, `GOSUMDB=sum.golang.org`, `GOFLAGS=-mod=readonly`, and only the clone mounted read-only.
-- [ ] T018 [P] [US1] Write the validation use case tests in `internal/core/eval/validate_test.go` (plain), with fake `Workspaces`, `Grader` and `RecordStore`. They cover the replayability rules 0–4 in order (no acceptance tests, base not fetchable, no verifier for task type, passes on base, reference fails), each failure reason string, storing `base_full_suite_passed` when a `full_test_command` exists, and that `--all` revalidates while `--pending` skips validated records (data-model.md, "Validation rules").
-- [ ] T019 [P] [US1] Write `internal/core/eval/redact_test.go`. It covers:
+- [X] T018 [P] [US1] Write the validation use case tests in `internal/core/eval/validate_test.go` (plain), with fake `Workspaces`, `Grader` and `RecordStore`. They cover the replayability rules 0–4 in order (no acceptance tests, no verifier for task type, base not fetchable, passes on base, reference fails), each failure reason string, storing `base_full_suite_passed` when a `full_test_command` exists, and that `--all` revalidates while `--pending` skips validated records (data-model.md, "Validation rules").
+- [X] T019 [P] [US1] Write `internal/core/eval/redact_test.go`. It covers:
   - the values of given env vars whose names contain `TOKEN`, `KEY`, `SECRET` or `PASSWORD` replaced by `[REDACTED]`;
   - each token pattern from research R5 (`gh[opusr]_…`, `github_pat_…`, `sk-…`, `xox[abpr]-…`, `AKIA…`, PEM private-key blocks) replaced;
   - ordinary text, and short values under 8 characters, left untouched;
@@ -150,31 +150,31 @@ No foreman orchestrator code is involved.
 
 ### Implementation
 
-- [ ] T020 [US1] Declare the `Workspaces` and `Grader` ports and their types (`Workspace`, `GradeInput`, `GradeOutput`, `TestResult`, `ErrBaseNotFound`) in `internal/core/eval/ports.go`, per contracts/ports.md.
-- [ ] T021 [US1] Implement `internal/adapters/sandbox/git.go` to pass T016:
+- [X] T020 [US1] Declare the `Workspaces` and `Grader` ports and their types (`Workspace`, `GradeInput`, `GradeOutput`, `TestResult`, `ErrBaseNotFound`) in `internal/core/eval/ports.go`, per contracts/ports.md.
+- [X] T021 [US1] Implement `internal/adapters/sandbox/git.go` to pass T016:
   - keep mirrors in `work/mirrors/<sha256(url)[:16]>.git`, updated with `git fetch --prune`;
   - pass `-c core.hooksPath=/dev/null` on every git call;
   - clone with `git clone --no-hardlinks --no-checkout`, then checkout the base;
   - copy the `.git` directory to `work/runs/<id>/trusted.git` right after checkout, then copy the overlay in;
   - export through the trusted git dir only: `GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git --git-dir=<trusted.git> --work-tree=<ws> -c core.hooksPath=/dev/null -c core.fsmonitor=false -c diff.external= -c core.attributesFile=/dev/null add -A`, then `diff --cached --binary --no-ext-diff --no-textconv <base>`, excluding overlay paths, `.fm/` and `.git/` (research R6).
-- [ ] T022 [P] [US1] Implement `internal/adapters/container/gotest.go`, the `go test -json` parser, to pass T015.
-- [ ] T023 [P] [US1] Implement `internal/core/eval/redact.go` (`NewRedactor(env map[string]string)` with `Redact(string) string` and `Truncate(string, int) string`) to pass T019. It is pure: the environment is passed in by `cmd`.
-- [ ] T024 [US1] Implement `internal/adapters/container/grader.go` to pass T017. Stages per research R5:
+- [X] T022 [P] [US1] Implement `internal/adapters/container/gotest.go`, the `go test -json` parser, to pass T015.
+- [X] T023 [P] [US1] Implement `internal/core/eval/redact.go` (`NewRedactor(env map[string]string)` with `Redact(string) string` and `Truncate(string, int) string`) to pass T019. It is pure: the environment is passed in by `cmd`.
+- [X] T024 [US1] Implement `internal/adapters/container/grader.go` to pass T017. Stages per research R5:
   - **prepare**: the sandbox clone, plus the patch applied with hooks disabled;
   - **dependency fetch**: `go mod download` into the named volume `fm-gomod-<sha256(go.sum)[:16]>`, network on, only the clone mounted read-only, with `GOPROXY=https://proxy.golang.org`, `GOSUMDB=sum.golang.org` and `GOFLAGS=-mod=readonly`. Skipped when the volume exists;
   - **test**: `--network=none --read-only --tmpfs /tmp --cap-drop=ALL --security-opt no-new-privileges --pids-limit 512 --memory 2g --cpus 2`; mount the clone read-write at `/src`, the hidden tests read-only at `/hidden`, and the module volume read-only; copy hidden over src, then run the test command;
   - **full suite**: optional, with the same isolation as the test stage; reports pass or fail;
   - pass `--context` from `FOREMAN_DOCKER_CONTEXT`, and no host environment variables;
   - redact and truncate the log to 64 KiB with the core redactor (T023).
-- [ ] T025 [US1] Pin `FOREMAN_GRADER_IMAGE` in `cmd/fm/env.go` to `golang:1.27.1-bookworm@sha256:<digest>`, choosing the newest build at least 7 days old. Record the digest and its date in a comment, and run T017 against it.
-- [ ] T026 [US1] Implement the validation use case in `internal/core/eval/validate.go` (`Validate(ctx, ids []string, mode)`) to pass T018. Rule 2 rejects a non-`code` task type or a record needing a rubric, with reason `rubric grader not implemented` (research R11).
-- [ ] T027 [US1] Implement `fm eval record` in `cmd/fm/eval.go`, with every flag from contracts/cli.md:
+- [X] T025 [US1] Pin `FOREMAN_GRADER_IMAGE` in `cmd/fm/env.go` to `golang:1.27.1-bookworm@sha256:<digest>`, choosing the newest build at least 7 days old. Record the digest and its date in a comment, and run T017 against it.
+- [X] T026 [US1] Implement the validation use case in `internal/core/eval/validate.go` (`Validate(ctx, ids []string, mode)`) to pass T018. Rule 1 rejects a non-`code` task type with reason `no verifier for task type <t>` (research R11; data-model.md).
+- [X] T027 [US1] Implement `fm eval record` in `cmd/fm/eval.go`, with every flag from contracts/cli.md:
   - read the `--hidden` and `--visible` directories with `os.DirFS`;
   - call `ValidateNew`, then `AddRecord`, then `Validate` (unless `--no-validate`);
   - print the id and the replayable state or reason;
   - exit 1 when not replayable, 2 on input errors, 3 on infrastructure errors.
-- [ ] T028 [US1] Implement `fm eval validate [ids... | --pending | --all]` and `fm eval list [--replayable] [--repo] [--since] [--json]` in `cmd/fm/eval.go`. The list footer's "since last spot check" count is added in T065.
-- [ ] T029 [US1] Run quickstart steps 1–3 for real and fix whatever fails: `scripts/fixtures.sh`, recording addrepo and the two broken variants, and `go test -tags container ./internal/adapters/container/...`.
+- [X] T028 [US1] Implement `fm eval validate [ids... | --pending | --all]` and `fm eval list [--replayable] [--repo] [--since] [--json]` in `cmd/fm/eval.go`. The list footer's "since last spot check" count is added in T065.
+- [X] T029 [US1] Run quickstart steps 1–3 for real and fix whatever fails: `scripts/fixtures.sh`, recording addrepo and the two broken variants, and `go test -tags container ./internal/adapters/container/...`.
 
 **Checkpoint**: US1 is complete. Records exist and are validated by the offline grader. This is
 the MVP: measurement can start, even with tasks done by hand outside foreman.

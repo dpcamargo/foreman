@@ -10,7 +10,9 @@ type RecordStore interface {
     AddRecord(ctx context.Context, r Record, files RecordFiles) (Record, error)
     Record(ctx context.Context, id string) (Record, error)
     Records(ctx context.Context, f RecordFilter) ([]Record, error)
-    SetReplayable(ctx context.Context, id string, ok bool, reason string) error
+    RecordFiles(ctx context.Context, id string) (RecordFiles, error) // read-only views of the blobs
+    // SetReplayable stores a validation verdict (replayable, reason, base full-suite result).
+    SetReplayable(ctx context.Context, id string, v Validation) error
 
     // StartRun returns the existing run when the cache key already has a finished one
     // (reused=true). Otherwise it inserts a running row with the caller's PID fingerprint.
@@ -26,7 +28,8 @@ type RecordStore interface {
 // Workspaces makes fresh clones. Adapter: internal/adapters/sandbox.
 type Workspaces interface {
     // Prepare: fresh clone of repo at base, hooks disabled, overlay applied (visible tests).
-    Prepare(ctx context.Context, repoURL, base string, overlay fs.FS) (Workspace, error)
+    // id names work/runs/<id>/; ErrBaseNotFound when base can't be fetched.
+    Prepare(ctx context.Context, id, repoURL, base string, overlay fs.FS) (Workspace, error)
     // Export: the diff from base to the workspace's state (including untracked files),
     // with the overlay excluded, written to dst. Computed with the trusted git dir captured
     // at Prepare time, never with the workspace's own .git (research R6).
@@ -51,19 +54,20 @@ type Grader interface {
 
 type GradeInput struct {
     RepoURL, Base string
-    PatchPath     string   // "" = grade the unpatched base (validation)
+    Patch         []byte   // nil = grade the unpatched base (validation)
     Visible       fs.FS    // copied in before the patch is applied
     Hidden        fs.FS    // mounted read-only, copied over the tree only inside the container
     TestCommand   []string
     TestFormat    TestFormat
-    FullTest      []string // optional
+    FullTest      []string // optional; run before the hidden tests are copied in
     Timeout       time.Duration
 }
 
 type GradeOutput struct {
     HiddenPassed, HiddenFailed int
     PerTest                    []TestResult
-    FullSuiteRegressed         *bool
+    FullSuitePassed            *bool  // nil without a full test command; core derives regressions
+    ApplyError                 string // patch (or its go.mod) unusable: an attempt failure, not infra
     Log                        string // redacted, truncated
 }
 

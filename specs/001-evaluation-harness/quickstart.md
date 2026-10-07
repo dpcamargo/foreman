@@ -66,10 +66,10 @@ bin/fm eval record … --hidden testdata/fixtures/addrepo/hidden-passes-on-base 
 Expected: exit 1, `not replayable: hidden tests pass on base`.
 
 ```sh
-bin/fm eval record … --hidden testdata/fixtures/addrepo/hidden-escape …   # contains ../x_test.go
+bin/fm eval record … --hidden testdata/fixtures/addrepo/hidden-escape …   # a symlink pointing outside
 ```
 
-Expected: exit 2, a path-escape error, and no record created.
+Expected: exit 2, `outside_link is a symlink; symlinks are not allowed`, and no record created.
 
 ```sh
 bin/fm eval record --repo $F/addrepo.git --base $(cat $F/addrepo.base) \

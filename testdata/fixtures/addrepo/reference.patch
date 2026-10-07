@@ -1,0 +1,10 @@
+diff --git a/sub.go b/sub.go
+new file mode 100644
+index 0000000..ab1c53d
+--- /dev/null
++++ b/sub.go
+@@ -0,0 +1,4 @@
++package addrepo
++
++// Sub returns a - b.
++func Sub(a, b int) int { return a - b }

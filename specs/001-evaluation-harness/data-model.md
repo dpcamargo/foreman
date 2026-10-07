@@ -149,13 +149,14 @@ doesn't match (constitution VII).
 
 - **Replayable** (FR-004) requires all of:
   0. the record has hidden tests (otherwise the reason is `no acceptance tests`);
-  1. the base commit is fetchable;
-  2. `task_type = 'code'` (otherwise the reason is `no verifier for task type <t>`; the rubric
-     grader arrives with the first judgment-graded type, research R11);
+  1. `task_type = 'code'` (otherwise the reason is `no verifier for task type <t>`; the rubric
+     grader arrives with the first judgment-graded type, research R11). It's checked before the
+     clone because it costs nothing;
+  2. the base commit is fetchable (otherwise `base commit not fetchable`);
   3. the grader on the unpatched base (with the visible tests applied) reports at least one
-     hidden test failed, or a non-zero exit for `exit-code`;
+     hidden test failed, or a non-zero exit for `exit-code` (otherwise `hidden tests pass on base`);
   4. if `reference.patch` exists, the grader on base + reference reports every hidden test
-     passed.
+     passed (otherwise `reference patch does not apply` or `reference patch fails hidden tests`).
 
   A failure records the first rule that failed as `not_replayable_reason`. Rule 4 catches
   broken hidden tests. When `full_test_command` is set, validation also runs it on the
