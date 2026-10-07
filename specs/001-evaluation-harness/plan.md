@@ -136,7 +136,9 @@ internal/core/eval/
 ├── record.go       record_test.go       # Record, validation of inputs, replayability rules
 ├── run.go          run_test.go          # ReplayRun, statuses, RunKey, cache semantics
 ├── grade.go        grade_test.go        # success / false_success rules, leak scan (pure: takes text)
-├── replay.go       replay_test.go       # use cases: Validate, ReplayOnce, Spot, Decide (with fakes)
+├── validate.go     validate_test.go     # use case: Validate (replayability rules)
+├── replay.go       replay_test.go       # use case: ReplayOnce + prompt rendering
+├── decide.go       decide_test.go       # use cases: Spot, Decide (smoke, usage gate, projection)
 ├── sample.go       sample_test.go       # seeded sampling, repo/category mix, majority flag
 ├── stats.go        stats_test.go        # metrics, paired bootstrap, thresholds
 ├── report.go       report_test.go       # Report type, markdown + JSON rendering (pure)
@@ -145,8 +147,9 @@ internal/adapters/
 ├── sqlite/         store.go store_test.go migrate.go
 ├── sandbox/        git.go git_test.go             # mirrors, fresh clones, overlay, export
 ├── container/      grader.go grader_test.go gotest.go   # docker CLI, go test -json parsing
+├── proc/           proc.go proc_test.go            # PID + start-time fingerprint for lost-run sweep
 └── runner/
-    ├── codex/      codex.go codex_test.go contract_test.go
+    ├── codex/      codex.go codex_test.go contract_test.go leak_contract_test.go
     └── hermes/     oneshot.go kanban.go hermes_test.go contract_test.go
 internal/archtest/  archtest_test.go             # core imports stdlib + core only
 migrations/         0001_eval.sql

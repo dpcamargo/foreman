@@ -47,11 +47,12 @@ fails if `internal/core` imports an adapter or a third-party module.
 
 The fixture is `testdata/fixtures/addrepo`: a tiny Go repo with a base commit missing a
 feature, a hidden test for it, and a reference patch. `scripts/fixtures.sh` builds it as a local
-git repo under `work/fixtures/addrepo.git`.
+git repo under `$FOREMAN_HOME/work/fixtures/addrepo.git`.
 
 ```sh
 scripts/fixtures.sh
-bin/fm eval record --repo work/fixtures/addrepo.git --base $(cat work/fixtures/addrepo.base) \
+F=${FOREMAN_HOME:-$HOME/.foreman}/work/fixtures
+bin/fm eval record --repo $F/addrepo.git --base $(cat $F/addrepo.base) \
   --request-file testdata/fixtures/addrepo/request.md --hidden testdata/fixtures/addrepo/hidden \
   --reference testdata/fixtures/addrepo/reference.patch --test-cmd '["go","test","-json","./..."]'
 ```
