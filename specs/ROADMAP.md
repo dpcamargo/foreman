@@ -48,13 +48,23 @@ or tasks breakdown yet (`/speckit-plan` / `/speckit-tasks` not yet run for any f
   history that only exists once 001-008 have been running for a while, and governs the
   highest-stakes lever (auto-merge) last, per the constitution's Governance section.
 
+## Planned task-type features (not yet specified)
+
+| # | Task type | Earliest start | Why there |
+|---|---|---|---|
+| 010 | Research | after 002 "go" and 003 | Cheapest to verify by code (cited URLs must load and contain the quoted text); Hermes already does research. Takes over the Hermes research-worker part of 007 so it isn't blocked behind the decision protocol |
+| 011 | Docs | after 010 | Verifiable by build, link and lint checks plus a cross-family rubric; no external side effects |
+| 012 | Ops | after 011 and 008 | Changes real systems: needs dry-run-then-approve (003, constitution VIII) and credential injection through the egress proxy (008) so agents never hold target-system credentials |
+
+Each one ships its own verifier and eval task set, and is enabled only after beating a single-agent baseline for that task type.
+
 ## Decisions
 
 - **Scope** — decided 2026-10-07 (spec 001 clarification): foreman orchestrates any kind of
   work, with code as one task type. Code comes first and carries the go/no-go; each further
   task type (research, docs, ops) needs its own verifier and eval task set before it is enabled
-  (constitution v2.0.0, Principles II/III/VIII). Where non-code task types enter the roadmap is
-  still being clarified.
+  (constitution v2.0.0, Principles II/III/VIII). Order decided: code → research → docs → ops
+  (see "Planned task-type features").
 - **Orchestrator hosting** — decided 2026-10-07: `launchd` host process under a dedicated
   `foreman` macOS user with its own Colima profile mounting only its workspace root
   ([ADR 0001](../docs/adr/0001-orchestrator-hosting.md), constitution v1.1.1).

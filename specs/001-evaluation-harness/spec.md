@@ -20,6 +20,9 @@ automatically before it's trusted."
 - Q: What should foreman orchestrate? → A: Any kind of work (code, research, docs, ops), with
   code as one task type. The eval harness is organized by task type; code is the first type and
   the subject of the go/no-go, and each further type gets its own task set before it is enabled.
+- Q: Which non-code kind of work comes first, and when? → A: Code first (002 go/no-go), then
+  research, then docs, then ops. This feature's first decision-grade suite stays code-only; the
+  research task set is delivered with the research task-type feature.
 
 ## User Scenarios & Testing *(mandatory)*
 
