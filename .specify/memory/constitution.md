@@ -1,5 +1,20 @@
 <!--
 Sync Impact Report
+Version change: 1.1.1 → 2.0.0
+Rationale: MAJOR — Principles II and III are redefined. Operator decision (spec 001
+  clarification, 2026-10-07): foreman orchestrates any kind of work, with code as one task type.
+  Code tasks keep exactly the old rules; non-code task types may now complete through a
+  declared verifier (code checks + cross-family rubric + human approval), which the old
+  Principle II did not allow.
+Modified principles:
+  - II. Execution-Based Verification Decides "Done" → II. Evidence-Based Verification Decides "Done"
+  - III. Test-First, by a Different Model Family, Failing on Base → III. Acceptance Criteria
+    First, by a Different Model Family
+  - VIII. adds a dry-run-then-approve rule for task types with external side effects.
+Modified sections: mission paragraph; Development Workflow ("Evaluation precedes" now per task type).
+Deferred: none.
+
+Previous report (v1.1.1):
 Version change: 1.1.0 → 1.1.1
 Rationale: PATCH — resolves the deferred TODO(ORCHESTRATOR_HOSTING) with the operator's
   decision (docs/adr/0001-orchestrator-hosting.md). No principle changed.
@@ -42,10 +57,12 @@ Templates requiring follow-up: none checked yet against this constitution (no pl
 
 # Foreman Constitution
 
-Foreman is a deterministic Go orchestrator for autonomous software engineering: it owns task
-state, budgets and approval gates; dispatches headless vendor agent CLIs (Codex, Antigravity, and
-Claude via Hermes) as coding workers; and treats execution-based verification, not model agreement,
-as the sole arbiter of "done." Hermes is the conversational front end, web-research worker and
+Foreman is a deterministic Go orchestrator for autonomous work. Code changes in git
+repositories are the first and strictest task type; other work (research, documentation,
+operations) is added as further task types, each behind its own declared verifier. foreman owns
+task state, budgets and approval gates; dispatches headless agents (Codex, Antigravity, and
+Claude via Hermes) as workers; and treats verification by evidence, not model agreement, as the
+sole arbiter of "done." Hermes is the conversational front end, web-research worker and
 personal memory — never the control loop. This constitution codifies the non-negotiable design
 corrections in `/Users/dpcamargo/repos/harness-architecture/ARCHITECTURE.md`; it is binding on
 every spec, plan and task produced for this repository.
@@ -64,22 +81,28 @@ Rationale: controlled studies show independent multi-agent control loops amplify
 39–70% performance (ARCHITECTURE.md §1). An LLM in the loop is non-deterministic, not
 durable, injectable, and costs money every tick.
 
-### II. Execution-Based Verification Decides "Done"
-A node or task MUST NOT be marked complete except by a `VerifyReport` produced by code running
-real builds, lint/vet, visible tests, hidden tests, and diff-policy checks in a clean,
-network-isolated container. A commit, a diff, or an agent's self-report of completion MUST
-NEVER by itself complete a task. An LLM judge MUST NOT be used for any question a test can
-settle.
+### II. Evidence-Based Verification Decides "Done"
+Every task type MUST declare, before it can be used, a verifier that decides "done" from
+evidence produced outside the agent that did the work. For code tasks this is unchanged: a
+`VerifyReport` from code running real builds, lint/vet, visible tests, hidden tests, and
+diff-policy checks in a clean, network-isolated container. For non-code task types the verifier
+MUST run every check code can run (for example: cited URLs resolve and contain the quoted text;
+documents build and their links resolve; an operation's post-conditions are probed), then grade
+the rest against a rubric fixed before execution, by a model family different from the
+author's, and require human approval for whatever neither can settle. A commit, a diff, an
+artifact, or an agent's self-report of completion MUST NEVER by itself complete a task. An LLM
+judge MUST NOT be used for any question a test or code check can settle.
 Rationale: this is the project's central correction — "what works in coding is a strong single
 writer plus tests plus candidate selection" (ARCHITECTURE.md §1), and verification is the
 cheapest, most reliable judgment available.
 
-### III. Test-First, by a Different Model Family, Failing on Base
-For every implement node beyond trivial (lane F) work, acceptance tests MUST be written from
-the spec, by a model family different from the implementer, BEFORE implementation begins. The
-verifier MUST confirm these tests fail on the base commit. A hidden subset of tests MUST be
-withheld from the implementer's workspace at all times, to catch overfitting and test
-tampering.
+### III. Acceptance Criteria First, by a Different Model Family
+For every task beyond trivial (lane F) work, acceptance criteria MUST be fixed from the spec,
+by a model family different from the executor, BEFORE execution begins. For code tasks these
+are acceptance tests that the verifier confirms fail on the base commit, with a hidden subset
+withheld from the implementer's workspace at all times. For non-code task types they are
+machine-checkable criteria plus a rubric, with a held-back subset the executor never sees
+wherever the task type allows it.
 Rationale: this turns "did the implementer build the right thing?" from a judgment call into
 an execution check, and catches test-gaming that a same-family implementer could otherwise
 satisfy superficially.
@@ -134,7 +157,9 @@ voting is permitted only on outputs a test can check. High-risk specs, deliverie
 to a protected branch MUST require an explicit, nonce-bound human approval tied to the exact
 artifact approved; approvals MUST NEVER be granted automatically on a timeout, and a
 compromised approval channel MUST be constrained by policy from approving production deploys,
-secret changes, or policy changes.
+secret changes, or policy changes. Any task type that acts on systems outside foreman's own
+workspace (operations) MUST first produce a dry-run or plan artifact, and MUST NOT perform an
+irreversible external action without a nonce-bound human approval of that artifact.
 Rationale: deliberation costs the same whether or not it is needed, and an Anthropic
 multi-agent research system used roughly 15× the tokens of a plain chat for exactly this
 reason (ARCHITECTURE.md §1, §2.2, §9).
@@ -187,7 +212,8 @@ one-host system now has to operate forever (ARCHITECTURE.md §1, §3.7, §17).
   (single-shot Hermes on Claude, single Codex session, Hermes `/goal`) MUST exist and be
   scoreable before new orchestrator capability is adopted; a change is adopted only if it
   beats the best single-agent baseline by the thresholds in ARCHITECTURE.md §16/Appendix D, or
-  is rejected.
+  is rejected. Each task type is enabled only after its own eval task set and baseline
+  comparison exist; code is first.
 - **The escalation ladder is enforced by the engine, not the model.** Attempt failures move
   through: retry same route with evidence → escalate to a different model family, fresh from
   the spec → replan (specifier sees all evidence) → block for human input. Loop guards (repeat
@@ -235,4 +261,4 @@ one-host system now has to operate forever (ARCHITECTURE.md §1, §3.7, §17).
 - Use `ARCHITECTURE.md` (`/Users/dpcamargo/repos/harness-architecture/ARCHITECTURE.md`) as the
   authoritative design reference for anything this constitution does not itself resolve.
 
-**Version**: 1.1.1 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-07
+**Version**: 2.0.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-07

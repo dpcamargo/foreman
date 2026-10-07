@@ -205,6 +205,10 @@ no duplicate or inconsistent database rows.
 - **FR-019**: foreman MUST reach containers only through a container-runtime instance owned by
   the `foreman` OS user whose VM mounts nothing but foreman's workspace root. It MUST NOT use
   the operator's default runtime socket, whose VM mounts the operator's home read-write.
+- **FR-020**: The engine MUST treat task type as data: each type declares its executor role(s),
+  its acceptance-criteria form, and its verifier. This feature implements only the `code` type,
+  but MUST NOT hard-code code-only assumptions (repo, base commit, patch) into the shared
+  task/node/run state, so later task types plug in without a schema rewrite.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -221,6 +225,9 @@ no duplicate or inconsistent database rows.
   visible tests, hidden tests, and each diff-policy check.
 - **ReviewFindings**: the reviewer's structured output — findings with severity, location,
   evidence, and repro where applicable.
+- **Task Type**: a named kind of work (`code` first; research, docs, ops later) declaring its
+  executor role(s), acceptance-criteria form, verifier, and whether it has external side
+  effects.
 - **Project Config** (`.foreman/project.yaml`): per-repo verifier image, setup commands, verify
   commands, and protected paths; minimal here, extended by later features.
 - **Go/No-Go Record**: the written outcome of comparing H1 against the best baseline arm —

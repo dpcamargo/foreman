@@ -50,6 +50,11 @@ or tasks breakdown yet (`/speckit-plan` / `/speckit-tasks` not yet run for any f
 
 ## Decisions
 
+- **Scope** — decided 2026-10-07 (spec 001 clarification): foreman orchestrates any kind of
+  work, with code as one task type. Code comes first and carries the go/no-go; each further
+  task type (research, docs, ops) needs its own verifier and eval task set before it is enabled
+  (constitution v2.0.0, Principles II/III/VIII). Where non-code task types enter the roadmap is
+  still being clarified.
 - **Orchestrator hosting** — decided 2026-10-07: `launchd` host process under a dedicated
   `foreman` macOS user with its own Colima profile mounting only its workspace root
   ([ADR 0001](../docs/adr/0001-orchestrator-hosting.md), constitution v1.1.1).

@@ -13,6 +13,14 @@ automatically before it's trusted."
 
 **Source**: `ARCHITECTURE.md` §0 (evaluation-first ordering), §13 Phase 0, §16, Appendix D.
 
+## Clarifications
+
+### Session 2026-10-07
+
+- Q: What should foreman orchestrate? → A: Any kind of work (code, research, docs, ops), with
+  code as one task type. The eval harness is organized by task type; code is the first type and
+  the subject of the go/no-go, and each further type gets its own task set before it is enabled.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Score a single arm against a task suite (Priority: P1)
@@ -129,8 +137,9 @@ and re-running the existing comparison command with no other changes.
 ### Functional Requirements
 
 - **FR-001**: The system MUST package each eval task as a directory under `eval/tasks/<id>/`
-  containing: a pinned `repo@base` reference, the task prompt text, a hidden test directory
-  not visible to any arm's workspace, a reference diff, and, for judgment-graded tasks, a
+  declaring its task type and containing: the task prompt text, the inputs it starts from (for
+  code: a pinned `repo@base`), held-back checks no arm can see (for code: a hidden test
+  directory), a reference result (for code: a reference diff), and, for judgment-graded parts, a
   rubric.
 - **FR-002**: The system MUST classify each task into one of: bug fix, small feature, refactor,
   dependency/tooling change, research/diagnosis, or ambiguous/impossible, at roughly the
@@ -183,6 +192,11 @@ and re-running the existing comparison command with no other changes.
 - **FR-017**: The system MUST report the total tokens, quota units, and wall-clock time spent by
   each eval run itself, per arm and in aggregate, and MUST refuse to start a decision-grade stage
   whose projected token spend (from smoke-stage measurements) exceeds an operator-set budget.
+- **FR-018**: Grading MUST follow the task type's declared verifier: code checks first (for code:
+  build and hidden tests; for other types, e.g., cited URLs resolve and contain the quoted text),
+  then rubric grading by a model family different from the arm's, blind to the arm, against
+  criteria fixed before the run. A task type with no declared verifier MUST be rejected at load
+  time. The first decision-grade suite contains code tasks only.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -223,10 +237,9 @@ and re-running the existing comparison command with no other changes.
 
 ## Assumptions
 
-- The operator (not an automated process) curates the initial 15–20 tasks from `materiaeforma`,
-  the Hugo site, and other existing repos referenced in ARCHITECTURE.md §16, by hand-selecting
-  past commits and deriving or writing hidden tests; task curation itself is manual, tooling-
-  assisted work, not something this feature automates.
+- The operator (not an automated process) curates the initial 15–20 tasks from repos the
+  operator chooses, by hand-selecting past commits and deriving or writing hidden tests; task
+  curation itself is manual, tooling-assisted work, not something this feature automates.
 - Grading runs in containers on the operator's Colima VM (4 CPUs / 6 GiB). Colima mounts the
   operator's home directory read-write into its VM, so the grader MUST pass only explicit
   mounts (FR-014); container image choice is a `/speckit-plan` decision.
