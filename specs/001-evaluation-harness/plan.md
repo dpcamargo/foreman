@@ -168,7 +168,7 @@ directories, so `go test ./...` stays hermetic.
 | 1 | `go.mod`, `cmd/fm` skeleton, `core/eval` record and run types and input validation, `adapters/sqlite` + migration 0001, `archtest`, `fm eval record --no-validate` and `fm eval list` | US1 (storage half) | none |
 | 2 | `adapters/sandbox`, `adapters/container` grader, `fm eval validate`, fixtures, container-tagged tests (offline, no host mounts, no host env) | US1 complete | pin the grader image digest; run quickstart 2–3 |
 | 3 | `Arm` port, `runner/codex` (A1) with the permissions profile, `ReplayOnce` with caps, cache and lost-run sweep, `fm eval replay`, T-codex-deny, T-codex-usage, T-leak-scan | US2 (A1) | run `go test -tags live` for Codex; quickstart 4–5, 7 |
-| 4 | `runner/hermes` single shot (A0) and Kanban goal (A2), T-hermes-confined, T-hermes-usage, T-kanban-goal | US2 complete | create the `foreman-arm` profile and log in (quickstart 0); run the Hermes live tests deliberately (Claude tokens) |
+| 4 | `runner/hermes` single shot (A0) and Kanban goal (A2), T-hermes-confined, T-hermes-usage, T-kanban-goal | US2 complete | create the `foreman-arm` profile (quickstart 0; no login, it inherits the root Anthropic credentials); run the Hermes live tests deliberately (Claude tokens) |
 | 5 | `sample.go`, `stats.go`, `report.go`; `fm eval spot`, `fm eval decide` (smoke, usage gate, budget projection), `fm eval report` | US3 | quickstart 6; check the Anthropic usage page after the first smoke pass with A0 |
 
 Each PR passes `gofmt -l .` (empty), `go vet ./...` and `go test ./...` before merge. PRs 2–5

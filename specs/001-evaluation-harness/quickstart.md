@@ -18,8 +18,12 @@ changed only through `hermes config set`.
 ```sh
 hermes profile create foreman-arm --no-skills --no-alias \
   --description "foreman baseline arm: confined, no MCP, no memory"   # blank: no --clone
-hermes -p foreman-arm model                # log in to Anthropic, pick the baseline Claude model
 export FOREMAN_HERMES_HOME=~/.hermes/profiles/foreman-arm
+# No login needed: a profile with no Anthropic entries of its own inherits the root
+# credential pool read-only (hermes_cli/auth.py read_credential_pool).
+HERMES_HOME=$FOREMAN_HERMES_HOME hermes config set model.provider anthropic
+HERMES_HOME=$FOREMAN_HERMES_HOME hermes config set model.default <baseline Claude model>
+HERMES_HOME=$FOREMAN_HERMES_HOME hermes auth list             # anthropic entries shown (inherited)
 HERMES_HOME=$FOREMAN_HERMES_HOME hermes config set terminal.backend docker
 HERMES_HOME=$FOREMAN_HERMES_HOME hermes config set terminal.docker_image "$FOREMAN_GRADER_IMAGE"
 HERMES_HOME=$FOREMAN_HERMES_HOME hermes config set terminal.docker_mount_cwd_to_workspace true
