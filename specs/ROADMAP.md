@@ -48,22 +48,21 @@ or tasks breakdown yet (`/speckit-plan` / `/speckit-tasks` not yet run for any f
   history that only exists once 001-008 have been running for a while, and governs the
   highest-stakes lever (auto-merge) last, per the constitution's Governance section.
 
-## Open decision (blocks `/speckit-plan`)
+## Decisions
 
-- **Orchestrator hosting** — `launchd` host process under a dedicated `foreman` macOS user, or a
-  persistent container with the Docker socket. Recorded as TODO(ORCHESTRATOR_HOSTING) in the
-  constitution. Whichever wins, foreman MUST NOT use the default Colima profile's socket from a
-  separate user: that profile mounts `/Users/dpcamargo` read-write into its VM (verified
-  2026-10-07), which would hand foreman write access to the operator's home.
+- **Orchestrator hosting** — decided 2026-10-07: `launchd` host process under a dedicated
+  `foreman` macOS user with its own Colima profile mounting only its workspace root
+  ([ADR 0001](../docs/adr/0001-orchestrator-hosting.md), constitution v1.1.1).
 
 ## Prerequisites (ARCHITECTURE.md §18)
 
 | Item | Status |
 |---|---|
 | Rotate the `gho_` token in `~/.hermes/config.yaml` | Done by operator; verified no inline token remains — config references `${GITHUB_PERSONAL_ACCESS_TOKEN}` from `.env` |
-| Pin `npx` MCP servers | Done: `@playwright/mcp@0.0.83` (latest, past 7-day cooldown), `@modelcontextprotocol/server-github@2025.4.8`. The GitHub package is **deprecated upstream**; migrating to GitHub's official MCP server is recommended (tool names change, so it needs a decision) |
+| Pin MCP servers | Done: `@playwright/mcp@0.0.83` (latest, past 7-day cooldown). GitHub moved off the deprecated npm package to GitHub's official server v1.12.2 (newest release past the 7-day cooldown), installed from the release binary with verified sha256 at `~/.hermes/bin/github-mcp-server-1.12.2`; authenticated call verified |
 | Move Hermes off Anthropic OAuth | Not doing (operator decision). Claude runs go through Hermes, operator-triggered only. Check the account's usage page after the first eval smoke stage for extra-usage billing |
-| Create the `foreman` macOS user | Not created (operator decision: no automatic run). Manual step, depends on the hosting decision |
+| Create the `foreman` macOS user | Not created (operator decision: no automatic run). Manual, needs sudo; required before Feature 002 |
+| Start a `foreman` Colima profile | Manual, as the `foreman` user, mounting only its workspace root (ADR 0001); required before Feature 002 |
 | Raise container VM resources | Done: Colima default profile 2 CPU / 2 GiB → 4 CPU / 6 GiB, verified from inside a container |
 
 ## Carry-overs for `/speckit-plan` (implementation choices moved out of specs)
@@ -79,6 +78,5 @@ or tasks breakdown yet (`/speckit-plan` / `/speckit-tasks` not yet run for any f
 
 ## Next steps
 
-1. Decide orchestrator hosting (above).
-2. Run `/speckit-clarify` on `001-evaluation-harness`, then `/speckit-plan` for 001 — no other
+1. Run `/speckit-clarify` on `001-evaluation-harness`, then `/speckit-plan` for 001 — no other
    feature's plan should start before 001's plan exists and 002's go/no-go has run.

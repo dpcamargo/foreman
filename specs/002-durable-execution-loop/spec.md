@@ -202,6 +202,9 @@ no duplicate or inconsistent database rows.
   context, verifier log, and report it persists. Unredacted copies MUST NOT be written to disk.
 - **FR-018**: The verifier MUST reuse Feature 001's clean-room grader component, extended with
   diff-policy checks and visible-test runs, rather than a second implementation.
+- **FR-019**: foreman MUST reach containers only through a container-runtime instance owned by
+  the `foreman` OS user whose VM mounts nothing but foreman's workspace root. It MUST NOT use
+  the operator's default runtime socket, whose VM mounts the operator's home read-write.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -261,8 +264,9 @@ no duplicate or inconsistent database rows.
 - The verifier runs on the operator's Colima VM, already raised to 4 CPUs / 6 GiB. Colima
   mounts the operator's home directory read-write into its VM, so verifier containers MUST get
   no bind mounts beyond the patched clone, read-only hidden tests, and read-only dependency
-  caches. Where foreman itself runs (host process under a dedicated OS user vs. container) is
-  an open decision recorded in specs/ROADMAP.md and MUST be settled before `/speckit-plan`.
+  caches. foreman runs as a `launchd` host process under the dedicated `foreman` macOS user
+  (ADR 0001); the coding agents run on the host under that user inside their vendors' own
+  sandboxes, and only the verifier runs in containers.
 - Replan (ladder rung 4) and human-approval gating via Telegram are explicitly out of scope;
   rung 3's "mark for human attention" in this feature means a clear CLI-reported block state,
   not a Telegram message (that channel is Feature 003).

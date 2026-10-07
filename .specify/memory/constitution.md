@@ -1,5 +1,12 @@
 <!--
 Sync Impact Report
+Version change: 1.1.0 → 1.1.1
+Rationale: PATCH — resolves the deferred TODO(ORCHESTRATOR_HOSTING) with the operator's
+  decision (docs/adr/0001-orchestrator-hosting.md). No principle changed.
+Modified sections: Technology Stack (Orchestrator line).
+Deferred: none.
+
+Previous report (v1.1.0):
 Version change: 1.0.0 → 1.1.0
 Rationale: MINOR — one rule redefined to match its source (unattended model use is now
   per-vendor terms, not "API keys only"), and one materially new quality gate (token economy).
@@ -146,9 +153,10 @@ one-host system now has to operate forever (ARCHITECTURE.md §1, §3.7, §17).
 
 ## Technology Stack & Component Boundaries
 
-- **Orchestrator**: Go, one binary; hosting is TODO(ORCHESTRATOR_HOSTING) — `launchd` host
-  process under a dedicated OS user, or a persistent container — to be decided before the
-  first `/speckit-plan`. Either way: a
+- **Orchestrator**: Go, one binary, run by `launchd` as a host process under a dedicated
+  `foreman` macOS user (ADR 0001). It reaches containers only through its own container-runtime
+  instance whose VM mounts nothing but foreman's workspace root — never the operator's default
+  runtime socket. Containerizing foreman is revisited in Feature 008. It runs a
   level-triggered reconcile loop plus in-process event wakeups. No workflow framework
   (Temporal, DBOS, LangGraph) until the DAG outgrows a data-driven model — see Principle IX.
 - **Store**: SQLite in WAL mode (`modernc.org/sqlite` or `mattn/go-sqlite3`), FTS5, `sqlc`,
@@ -227,4 +235,4 @@ one-host system now has to operate forever (ARCHITECTURE.md §1, §3.7, §17).
 - Use `ARCHITECTURE.md` (`/Users/dpcamargo/repos/harness-architecture/ARCHITECTURE.md`) as the
   authoritative design reference for anything this constitution does not itself resolve.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-07
+**Version**: 1.1.1 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-07
