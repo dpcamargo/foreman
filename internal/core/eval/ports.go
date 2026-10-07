@@ -104,8 +104,9 @@ type RunStore interface {
 	// FinishRun writes the final status, usage and grade (nil for infra errors) in one
 	// transaction.
 	FinishRun(ctx context.Context, run ReplayRun, g *Grade) error
-	// SweepLostRuns marks running rows whose process is gone as infra_error ("lost").
-	SweepLostRuns(ctx context.Context, alive func(PIDFingerprint) bool) (int, error)
+	// SweepLostRuns marks running rows whose process is gone as infra_error ("lost")
+	// and returns their ids, so the caller can remove their workspaces.
+	SweepLostRuns(ctx context.Context, alive func(PIDFingerprint) bool) ([]string, error)
 	RunGrade(ctx context.Context, runID string) (*Grade, error)
 }
 

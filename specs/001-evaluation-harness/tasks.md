@@ -250,27 +250,27 @@ Depends on US1 (records and the grader).
 
 ### A1: Codex
 
-- [ ] T045 [P] [US2] Write `internal/adapters/runner/codex/codex_test.go` (plain), using a fake `codex` executable (a shell script in `testdata/` placed first on `PATH`):
+- [X] T045 [P] [US2] Write `internal/adapters/runner/codex/codex_test.go` (plain), using a fake `codex` executable (a shell script in `testdata/` placed first on `PATH`):
   - the argv and environment match contracts/arms.md A1 exactly, including the inline `permissions.fmarm.filesystem` table with `:minimal`, the workspace, GOROOT and the cache, `-o <io>/last.json`, the prompt read from `<io>/prompt.md`, and no path under `state/` anywhere in argv, environment or stdin;
   - usage is parsed from `testdata/codex/turn_completed.jsonl`;
   - the wall cap kills the whole process group (the fake starts a grandchild `sleep`, which must be dead afterwards);
   - billable tokens over the cap give `budget_exceeded`;
   - a provider error exit gives `infra_error`.
-- [ ] T046 [US2] Implement `internal/adapters/runner/codex/codex.go` to pass T045:
+- [X] T046 [US2] Implement `internal/adapters/runner/codex/codex.go` to pass T045:
   - `Version` = `codex --version` plus the configured model;
   - the prompt is sent on stdin;
   - `Setpgid` is set and the group is killed on cap or cancel;
   - the adapter writes `<io>/prompt.md` itself, streams stdout into the `Transcript` writer it was given, has the CLI write `<io>/last.json`, and parses the claim from it.
-- [ ] T047 [US2] Write `internal/adapters/runner/codex/contract_test.go` (build tag `live`):
+- [X] T047 [US2] Write `internal/adapters/runner/codex/contract_test.go` (build tag `live`):
   - **T-codex-deny**: plant a canary file under a temp `state/`. The prompt asks for a harmless `ls` of the canary's directory and nothing else. Assert that the canary content is absent from the transcript and that "Operation not permitted" appears in a command result. If the model never ran the command, the test fails as "inconclusive", never passes.
   - **T-codex-usage**: non-zero input and output tokens.
   - Run it, and record the result and date in a comment.
-- [ ] T048 [US2] Implement `fm eval replay --record --arm --k --max-tokens --no-cache --json` in `cmd/fm/eval.go`:
+- [X] T048 [US2] Implement `fm eval replay --record --arm --k --max-tokens --no-cache --json` in `cmd/fm/eval.go`:
   - wire sqlite, sandbox, container, proc and codex;
   - run `SweepLostRuns` at startup;
   - print each run's grade and the command's total spend (FR-016).
-- [ ] T049 [US2] Write `internal/adapters/runner/codex/leak_contract_test.go` (build tag `live`), **T-leak-scan**: replay a fixture with a prompt override that makes the arm `echo` the canary path, then assert the run is graded `contaminated`.
-- [ ] T050 [US2] Run quickstart steps 4 (Codex part), 5 and 7 for real and fix whatever fails.
+- [X] T049 [US2] Write `internal/adapters/runner/codex/leak_contract_test.go` (build tag `live`), **T-leak-scan**: replay a fixture with a prompt override that makes the arm `echo` the canary path, then assert the run is graded `contaminated`.
+- [X] T050 [US2] Run quickstart steps 4 (Codex part), 5 and 7 for real and fix whatever fails.
 
 ### A0 and A2: Hermes
 

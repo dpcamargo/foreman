@@ -487,9 +487,9 @@ func TestSweepLostRuns(t *testing.T) {
 	key2.Rep = 2
 	lost, _, _ := s.StartRun(ctx, key2, deadPID)
 
-	n, err := s.SweepLostRuns(ctx, func(p eval.PIDFingerprint) bool { return p == alivePID })
-	if err != nil || n != 1 {
-		t.Fatalf("SweepLostRuns = %d, %v; want 1", n, err)
+	ids, err := s.SweepLostRuns(ctx, func(p eval.PIDFingerprint) bool { return p == alivePID })
+	if err != nil || len(ids) != 1 || ids[0] != lost.ID {
+		t.Fatalf("SweepLostRuns = %v, %v; want [%s]", ids, err, lost.ID)
 	}
 	var status, errMsg string
 	s.db.QueryRowContext(ctx, `SELECT status, coalesce(error,'') FROM replay_runs WHERE id = ?`, lost.ID).Scan(&status, &errMsg)

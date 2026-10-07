@@ -23,11 +23,11 @@ The prompt never mentions hidden tests, foreman, or any state path.
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["status", "summary"],
+  "required": ["status", "summary", "question"],
   "properties": {
-    "status":   {"enum": ["done", "needs_clarification"]},
+    "status":   {"type": "string", "enum": ["done", "needs_clarification"]},
     "summary":  {"type": "string", "maxLength": 2000},
-    "question": {"type": "string", "maxLength": 1000}
+    "question": {"type": ["string", "null"], "maxLength": 1000}
   }
 }
 ```
@@ -39,7 +39,7 @@ env -i HOME=$HOME PATH=$PATH TMPDIR=<ws>/.fm/tmp GOCACHE=<ws>/.fm/gocache GOPATH
     GOMODCACHE=<cache> GOFLAGS=-mod=mod GOPROXY=off GOTOOLCHAIN=local \
   codex exec --ephemeral --json -C <ws> \
     -c 'default_permissions="fmarm"' \
-    -c 'permissions.fmarm.filesystem={":minimal"="read", "<ws>"="write", "<GOROOT>"="read", "<cache>"="read"}' \
+    -c 'permissions.fmarm.filesystem={":minimal"="read", "<ws>"="write", "<GOROOT>"="read", "<cache>"="read", "/opt/homebrew"="read"}' \
     --output-schema schemas/arm_result.json -o <io>/last.json  -  < <io>/prompt.md
 ```
 
@@ -93,7 +93,7 @@ the Hermes arms use the Claude subscription.
 
 | Test | Proves |
 |---|---|
-| T-codex-deny | `codex exec` with the A1 profile cannot read a canary file under a temp `state/`: the canary string is absent from the transcript and the command shows "Operation not permitted". The prompt asks for a harmless `ls` of the canary's directory so the model actually runs it. **Must pass before any A1 result is trusted** (research R1) |
+| T-codex-deny | `codex exec` with the A1 profile cannot read a canary file under a temp `state/`. The prompt asks for `cat proof.txt; ls -la <state dir>`: the workspace nonce must appear (proof the command ran), the canary must not, and the listing must show "Operation not permitted". **Must pass before any A1 result is trusted** (research R1). Passed 2026-10-07 |
 | T-codex-usage | `turn.completed.usage` parses into `Usage` with non-zero input and output |
 | T-hermes-confined | A0's container cannot see `$HOME` or the canary: `ls /Users` and `cat` of the canary path fail inside the container |
 | T-hermes-usage | session export yields non-zero tokens and an `estimated_cost_usd` |

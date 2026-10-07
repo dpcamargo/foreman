@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -9,14 +11,19 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/dpcamargo/foreman/internal/adapters/artifacts"
 	"github.com/dpcamargo/foreman/internal/adapters/container"
+	"github.com/dpcamargo/foreman/internal/adapters/proc"
+	"github.com/dpcamargo/foreman/internal/adapters/runner/codex"
 	"github.com/dpcamargo/foreman/internal/adapters/sandbox"
 	"github.com/dpcamargo/foreman/internal/adapters/sqlite"
 	"github.com/dpcamargo/foreman/internal/core/eval"
+	"github.com/dpcamargo/foreman/prompts"
 )
 
 // runEval dispatches `fm eval <subcommand>` (contracts/cli.md).
@@ -36,6 +43,8 @@ func runEval(args []string, stdout, stderr io.Writer) int {
 		return cmdValidate(ctx, args[1:], stdout, stderr)
 	case "list":
 		return cmdList(ctx, args[1:], stdout, stderr)
+	case "replay":
+		return cmdReplay(ctx, args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "fm eval: unknown eval subcommand %q\n\n", args[0])
 		evalUsage(stderr)
@@ -50,6 +59,7 @@ subcommands:
   record     record a task (done outside foreman) as a task record
   validate   check whether records can be replayed
   list       list task records
+  replay     replay one record through a baseline arm
   help       show this help
 
 Run "fm eval <subcommand> -h" for flags.
@@ -58,11 +68,12 @@ Run "fm eval <subcommand> -h" for flags.
 
 // app holds the wired adapters for one command.
 type app struct {
-	env      env
-	store    *sqlite.Store
-	ws       *sandbox.Manager
-	grader   *container.Grader
-	redactor *eval.Redactor
+	env       env
+	store     *sqlite.Store
+	ws        *sandbox.Manager
+	grader    *container.Grader
+	artifacts *artifacts.Store
+	redactor  *eval.Redactor
 }
 
 func openApp(ctx context.Context) (*app, error) {
@@ -80,10 +91,11 @@ func openApp(ctx context.Context) (*app, error) {
 	redactor := eval.NewRedactor(environ())
 	ws := sandbox.New(e.Work)
 	return &app{
-		env:      e,
-		store:    store,
-		ws:       ws,
-		redactor: redactor,
+		env:       e,
+		store:     store,
+		ws:        ws,
+		artifacts: artifacts.New(e.State, e.Work, redactor.Redact),
+		redactor:  redactor,
 		grader: container.New(container.Config{
 			Image: e.GraderImage, DockerContext: e.DockerContext, Work: e.Work,
 			Clones: ws, Redact: redactor.Redact,
@@ -479,4 +491,238 @@ func shortRepo(u string) string {
 		return u
 	}
 	return "…" + u[len(u)-47:]
+}
+
+// --- fm eval replay ---
+
+// defaultTokenCap bounds one arm run in billable tokens (research R8).
+const defaultTokenCap = 1_000_000
+
+func cmdReplay(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("fm eval replay", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	recordID := fs.String("record", "", "record id (required)")
+	armFlag := fs.String("arm", "a1", "arm: a0, a1 or a2 (optionally with an instance suffix, e.g. a1#2)")
+	k := fs.Int("k", 1, "repetitions")
+	maxTokens := fs.Int64("max-tokens", defaultTokenCap, "token cap per run (billable tokens)")
+	noCache := fs.Bool("no-cache", false, "always run, and never let this run be reused (validation only)")
+	asJSON := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+	if *recordID == "" || *k < 1 || *maxTokens < 1 {
+		fmt.Fprintln(stderr, "fm eval replay: --record is required, and --k and --max-tokens must be positive")
+		return exitUsage
+	}
+	a, err := openApp(ctx)
+	if err != nil {
+		fmt.Fprintf(stderr, "fm eval replay: %v\n", err)
+		return exitInfra
+	}
+	defer a.close()
+	arm, err := a.arm(ctx, *armFlag)
+	if err != nil {
+		fmt.Fprintf(stderr, "fm eval replay: %v\n", err)
+		return exitFor(err)
+	}
+	rec, err := a.store.Record(ctx, *recordID)
+	if err != nil {
+		fmt.Fprintf(stderr, "fm eval replay: %v\n", err)
+		return exitFor(err)
+	}
+	if rec.Replayable == nil || !*rec.Replayable {
+		fmt.Fprintf(stderr, "fm eval replay: %s is not replayable (%s)\n", rec.ID, replayState(rec))
+		return exitNegative
+	}
+	replayer, err := a.replayer(ctx, *maxTokens)
+	if err != nil {
+		fmt.Fprintf(stderr, "fm eval replay: %v\n", err)
+		return exitInfra
+	}
+
+	var results []eval.ReplayResult
+	code := exitOK
+	for rep := 1; rep <= *k; rep++ {
+		req := eval.ReplayRequest{Record: rec, Arm: arm, ArmName: *armFlag, Rep: rep}
+		if *noCache {
+			req.NoCacheNonce = nonce()
+		}
+		res, err := replayer.ReplayOnce(ctx, req)
+		if err != nil {
+			fmt.Fprintf(stderr, "fm eval replay: rep %d: %v\n", rep, err)
+			return exitFor(err)
+		}
+		results = append(results, res)
+		if res.Run.Status == eval.StatusInfraError {
+			code = exitInfra
+		}
+		if !*asJSON {
+			fmt.Fprintln(stdout, formatRun(res))
+		}
+	}
+	spent := spend(results)
+	if *asJSON {
+		printReplayJSON(stdout, results, spent)
+	} else {
+		fmt.Fprintln(stdout, spent.String())
+	}
+	return code
+}
+
+// arm returns the adapter for an arm instance name.
+func (a *app) arm(ctx context.Context, name string) (eval.Arm, error) {
+	base, err := eval.ParseArm(name)
+	if err != nil {
+		return nil, usageErr("%v", err)
+	}
+	switch base {
+	case "a1":
+		goroot, err := exec.CommandContext(ctx, "go", "env", "GOROOT").Output()
+		if err != nil {
+			return nil, fmt.Errorf("go env GOROOT: %w", err)
+		}
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		return codex.New(codex.Config{
+			GoRoot: strings.TrimSpace(string(goroot)), ModCache: filepath.Join(a.env.Work, "gomodcache"),
+			Home: home, Path: os.Getenv("PATH"), CodexHome: os.Getenv("CODEX_HOME"),
+			ToolRoots: toolRoots("codex"),
+		}), nil
+	default:
+		return nil, usageErr("arm %s is not available yet", base)
+	}
+}
+
+// replayer wires a Replayer and sweeps runs lost by dead processes first.
+func (a *app) replayer(ctx context.Context, tokenCap int64) (eval.Replayer, error) {
+	self, err := proc.Self()
+	if err != nil {
+		return eval.Replayer{}, err
+	}
+	lost, err := a.store.SweepLostRuns(ctx, proc.Alive)
+	if err != nil {
+		return eval.Replayer{}, err
+	}
+	for _, id := range lost {
+		a.ws.Destroy(ctx, eval.Workspace{ID: id}) // its workspace, trusted git dir and io dir
+	}
+	if len(lost) > 0 {
+		fmt.Fprintf(os.Stderr, "marked %d run(s) lost by a dead process as infra_error\n", len(lost))
+	}
+	if err := a.grader.EnsureImage(ctx); err != nil {
+		return eval.Replayer{}, err
+	}
+	return eval.Replayer{
+		Records: a.store, Runs: a.store, Workspaces: a.ws, Artifacts: a.artifacts, Grader: a.grader,
+		PromptTemplate: prompts.ArmBaseline, StateDir: a.env.State, PID: self, TokenCap: tokenCap,
+	}, nil
+}
+
+// toolRoots are software install roots an arm may read: the Homebrew prefix and the
+// real install directory of the arm's CLI. They hold programs, not secrets.
+func toolRoots(binary string) []string {
+	var roots []string
+	for _, p := range []string{"/opt/homebrew", "/usr/local/Cellar", "/usr/local/Caskroom"} {
+		if fi, err := os.Stat(p); err == nil && fi.IsDir() {
+			roots = append(roots, p)
+		}
+	}
+	if path, err := exec.LookPath(binary); err == nil {
+		if real, err := filepath.EvalSymlinks(path); err == nil {
+			dir := filepath.Dir(filepath.Dir(real))
+			covered := false
+			for _, r := range roots {
+				if dir == r || strings.HasPrefix(dir, r+string(filepath.Separator)) {
+					covered = true
+				}
+			}
+			if !covered {
+				roots = append(roots, dir)
+			}
+		}
+	}
+	return roots
+}
+
+func nonce() string {
+	b := make([]byte, 4)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+func formatRun(r eval.ReplayResult) string {
+	hidden := "-"
+	if r.Grade != nil {
+		hidden = fmt.Sprintf("%d/%d", r.Grade.HiddenPassed, r.Grade.HiddenPassed+r.Grade.HiddenFailed)
+	}
+	cached := ""
+	if r.Reused {
+		cached = "  (cached)"
+	}
+	line := fmt.Sprintf("%s  %-6s rep %d  %-15s claimed=%-19s hidden %-5s tokens %-8d wall %s%s",
+		r.Run.ID, r.Run.Key.Arm, r.Run.Key.Rep, r.Run.Status, r.Run.Claimed, hidden,
+		r.Run.Usage.Billable(), r.Run.Wall.Round(time.Second), cached)
+	if r.Run.Error != "" {
+		line += "\n    error: " + r.Run.Error
+	}
+	return line
+}
+
+// spendTotal is what a command itself consumed; cache hits cost nothing (FR-016).
+type spendTotal struct {
+	Tokens    int64         `json:"tokens"`
+	USD       *float64      `json:"usd"`
+	Wall      time.Duration `json:"wall_ns"`
+	Runs      int           `json:"runs"`
+	CacheHits int           `json:"cache_hits"`
+}
+
+func spend(results []eval.ReplayResult) spendTotal {
+	var t spendTotal
+	var u eval.Usage
+	for _, r := range results {
+		if r.Reused {
+			t.CacheHits++
+			continue
+		}
+		t.Runs++
+		u = u.Add(r.Run.Usage)
+		t.Wall += r.Run.Wall
+	}
+	t.Tokens, t.USD = u.Billable(), u.USD
+	return t
+}
+
+func (t spendTotal) String() string {
+	usd := "n/a"
+	if t.USD != nil {
+		usd = fmt.Sprintf("$%.2f", *t.USD)
+	}
+	return fmt.Sprintf("spent: %d billable tokens, %s, %s wall over %d run(s); %d cache hit(s)",
+		t.Tokens, usd, t.Wall.Round(time.Second), t.Runs, t.CacheHits)
+}
+
+func printReplayJSON(w io.Writer, results []eval.ReplayResult, t spendTotal) {
+	type row struct {
+		RunID   string         `json:"run_id"`
+		Arm     string         `json:"arm"`
+		Rep     int            `json:"rep"`
+		Status  eval.RunStatus `json:"status"`
+		Claimed eval.Claim     `json:"claimed"`
+		Grade   *eval.Grade    `json:"grade"`
+		Tokens  int64          `json:"tokens_billable"`
+		WallS   float64        `json:"wall_s"`
+		Cached  bool           `json:"cached"`
+		Error   string         `json:"error,omitempty"`
+	}
+	var rows []row
+	for _, r := range results {
+		rows = append(rows, row{r.Run.ID, r.Run.Key.Arm, r.Run.Key.Rep, r.Run.Status, r.Run.Claimed, r.Grade,
+			r.Run.Usage.Billable(), r.Run.Wall.Seconds(), r.Reused, r.Run.Error})
+	}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	enc.Encode(map[string]any{"runs": rows, "spend": t})
 }

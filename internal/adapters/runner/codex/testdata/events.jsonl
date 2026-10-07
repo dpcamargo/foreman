@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a116a7-4897-7363-9448-cabe14648965"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"{\"status\":\"done\",\"summary\":\"added Sub\"}"}}
+{"type":"turn.completed","usage":{"input_tokens":27517,"cached_input_tokens":24064,"cache_write_input_tokens":0,"output_tokens":78,"reasoning_output_tokens":0}}

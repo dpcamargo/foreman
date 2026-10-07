@@ -31,10 +31,20 @@ names. A match marks the run `contaminated`, which counts as a failure.
   `execute_code` call through `docker exec` into one container per Hermes process. Settings:
   `terminal.docker_volumes` takes `host:container[:ro]`, `docker_mount_cwd_to_workspace`
   mounts the cwd at `/workspace`, and `docker_network: false` adds `--network=none`.
-- **Not yet verified**: that `codex exec` (not just `codex sandbox`) applies the same
-  `default_permissions` profile. A live probe was inconclusive because the model declined to
-  run the command. Contract test T-codex-deny (see `contracts/arms.md`) must pass before A1's
-  results are trusted.
+- **verified** (T-codex-deny, live, 2026-10-07): `codex exec` applies the same profile. The
+  model `cat`s a random nonce from the workspace (proof that commands really ran), and its
+  `ls` of the state directory gets `Operation not permitted`.
+- Three findings from the live run (codex-cli 0.160.0):
+  1. Codex's own sandbox helper re-executes the `codex` binary under the profile. Its install
+     root (`/opt/homebrew`) must therefore be readable, or the session fails to start
+     ("failed to load AGENTS.md instructions … execvp() … Operation not permitted"). The
+     adapter's `ToolRoots` adds software roots: the Homebrew prefix plus the real install
+     directory of the CLI. They hold programs, not secrets.
+  2. `--output-schema` uses OpenAI strict mode: every property must be in `required`, so
+     `question` is required and nullable (`["string","null"]`).
+  3. `exec --json` emits no command-execution items, only agent messages and turn usage.
+     Command output is visible only through what the model reports, which is why
+     T-codex-deny proves execution with a nonce rather than trusting the transcript.
 
 **Alternatives considered**:
 - *Hidden tests only inside a Docker volume in the Colima VM*: Codex can't reach Docker

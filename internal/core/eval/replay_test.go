@@ -52,8 +52,8 @@ func (f *fakeRuns) FinishRun(_ context.Context, r ReplayRun, g *Grade) error {
 	return nil
 }
 
-func (f *fakeRuns) SweepLostRuns(context.Context, func(PIDFingerprint) bool) (int, error) {
-	return 0, nil
+func (f *fakeRuns) SweepLostRuns(context.Context, func(PIDFingerprint) bool) ([]string, error) {
+	return nil, nil
 }
 
 func (f *fakeRuns) RunGrade(_ context.Context, id string) (*Grade, error) { return f.grades[id], nil }

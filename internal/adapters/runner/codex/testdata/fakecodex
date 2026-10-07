@@ -1,0 +1,21 @@
+#!/bin/sh
+# Fake codex CLI for codex_test.go. It records how it was called next to itself and
+# replays testdata events. Behaviour is chosen by the "mode" file next to it.
+d=$(dirname "$0")
+if [ "$1" = "--version" ]; then echo "codex-cli 9.9.9"; exit 0; fi
+printf '%s\n' "$@" > "$d/argv"
+env > "$d/env"
+cat > "$d/stdin"
+mode=$(cat "$d/mode" 2>/dev/null)
+case "$mode" in
+  sleep) sleep 300 & echo $! > "$d/child"; wait; exit 0 ;;
+  fail) echo "error: unexpected status 401 Unauthorized" >&2; exit 1 ;;
+esac
+out=""; prev=""
+for a in "$@"; do
+  if [ "$prev" = "-o" ]; then out="$a"; fi
+  prev="$a"
+done
+cat "$d/events.jsonl"
+if [ -n "$out" ] && [ -f "$d/last.json" ]; then cat "$d/last.json" > "$out"; fi
+exit 0

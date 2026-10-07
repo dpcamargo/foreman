@@ -627,11 +627,11 @@ func (s *Store) RunGrade(ctx context.Context, runID string) (*eval.Grade, error)
 }
 
 // SweepLostRuns implements eval.RunStore.
-func (s *Store) SweepLostRuns(ctx context.Context, alive func(eval.PIDFingerprint) bool) (int, error) {
+func (s *Store) SweepLostRuns(ctx context.Context, alive func(eval.PIDFingerprint) bool) ([]string, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT id, coalesce(pid, 0), coalesce(pid_started_at, '') FROM replay_runs WHERE status = ?`,
 		string(eval.StatusRunning))
 	if err != nil {
-		return 0, fmt.Errorf("list running runs: %w", err)
+		return nil, fmt.Errorf("list running runs: %w", err)
 	}
 	type candidate struct {
 		id  string
@@ -642,14 +642,16 @@ func (s *Store) SweepLostRuns(ctx context.Context, alive func(eval.PIDFingerprin
 		var c candidate
 		if err := rows.Scan(&c.id, &c.pid.PID, &c.pid.StartedAt); err != nil {
 			rows.Close()
-			return 0, fmt.Errorf("read running run: %w", err)
+			return nil, fmt.Errorf("read running run: %w", err)
 		}
 		if !alive(c.pid) {
 			lost = append(lost, c)
 		}
 	}
 	rows.Close()
+	var ids []string
 	for _, c := range lost {
+		marked := false
 		err := s.withTx(ctx, func(tx *sql.Tx) error {
 			res, err := tx.ExecContext(ctx, `UPDATE replay_runs SET status = ?, error = 'lost', ended_at = ? WHERE id = ? AND status = ?`,
 				string(eval.StatusInfraError), s.timestamp(), c.id, string(eval.StatusRunning))
@@ -659,14 +661,18 @@ func (s *Store) SweepLostRuns(ctx context.Context, alive func(eval.PIDFingerprin
 			if n, _ := res.RowsAffected(); n != 1 {
 				return nil // finished meanwhile
 			}
+			marked = true
 			from := string(eval.StatusRunning)
 			return s.insertEvent(ctx, tx, "run", c.id, &from, string(eval.StatusInfraError), map[string]any{"error": "lost", "pid": c.pid.PID})
 		})
 		if err != nil {
-			return 0, err
+			return nil, err
+		}
+		if marked {
+			ids = append(ids, c.id)
 		}
 	}
-	return len(lost), nil
+	return ids, nil
 }
 
 func scanRun(sc scanner) (eval.ReplayRun, error) {
