@@ -1,5 +1,22 @@
 <!--
 Sync Impact Report
+Version change: 2.0.0 → 3.0.0
+Rationale: MAJOR — the "Evaluation precedes the harness" gate is removed and redefined as
+  "Measure as we go" (operator decision, spec 001 clarification, 2026-10-07): no eval suite is
+  authored up front, and adoption is decided by replaying recorded real tasks. Specs that
+  relied on an upfront suite (001, 002) were rewritten in the same change. The proposal had
+  said 2.1.0 because it counted only the new principle; removing a gate is backward-incompatible
+  governance, so semver requires MAJOR.
+Added principles:
+  - X. Hexagonal, Minimal Code Structure (detailed rules and target layout in AGENTS.md).
+Modified sections:
+  - Development Workflow: "Evaluation precedes the harness" → "Measure as we go";
+    "Continuous evaluation" now replays recorded tasks instead of a fixed suite.
+  - Governance: compliance-review paths updated to the internal/core + internal/adapters layout.
+Principles I–IX: unchanged.
+Deferred: none.
+
+Previous report (v2.0.0):
 Version change: 1.1.1 → 2.0.0
 Rationale: MAJOR — Principles II and III are redefined. Operator decision (spec 001
   clarification, 2026-10-07): foreman orchestrates any kind of work, with code as one task type.
@@ -176,6 +193,22 @@ Rationale: "a roughly 100-line, bash-only agent scores above 74% on SWE-bench Ve
 scaffold is rarely the bottleneck, and every unjustified service is something this one-person,
 one-host system now has to operate forever (ARCHITECTURE.md §1, §3.7, §17).
 
+### X. Hexagonal, Minimal Code Structure
+foreman's Go code MUST be split into a core (`internal/core/...`: domain types and use cases,
+importing only the standard library and other core packages, performing no I/O) and adapters
+(`internal/adapters/...`: everything that touches SQLite, agent CLIs, containers, git, the
+network or the filesystem). `cmd/` packages MUST only build adapters and hand them to the core.
+Dependencies MUST point inward: a test MUST fail the build if any core package imports an
+adapter. Interfaces (ports) MUST be small and declared in the core package that uses them, and
+added only when a second implementation or a test fake needs one. No package, interface,
+option or directory may be created before a current task needs it; no frameworks, no
+dependency-injection containers, no catch-all `util` packages, no package-level mutable state.
+The full rules and the target layout live in `AGENTS.md`, which every coding agent reads.
+Rationale: the ports already exist in the design (Runner, Sandbox, Verifier, Memory, Notifier;
+ARCHITECTURE.md §15). Most of this code will be written by agents, so the rules must be
+written down and checked mechanically, and a one-person system cannot afford speculative
+structure (KISS, YAGNI; see Principle IX).
+
 ## Technology Stack & Component Boundaries
 
 - **Orchestrator**: Go, one binary, run by `launchd` as a host process under a dedicated
@@ -208,12 +241,15 @@ one-host system now has to operate forever (ARCHITECTURE.md §1, §3.7, §17).
 
 ## Development Workflow & Quality Gates
 
-- **Evaluation precedes the harness.** A task suite with hidden tests and a baseline runner
-  (single-shot Hermes on Claude, single Codex session, Hermes `/goal`) MUST exist and be
-  scoreable before new orchestrator capability is adopted; a change is adopted only if it
-  beats the best single-agent baseline by the thresholds in ARCHITECTURE.md §16/Appendix D, or
-  is rejected. Each task type is enabled only after its own eval task set and baseline
-  comparison exist; code is first.
+- **Measure as we go.** No eval suite is authored up front. Every task foreman runs MUST be
+  recorded with its outcome, attempts, tokens/quota, wall-clock time and human interventions,
+  and every task that came with acceptance tests MUST be replayable from its base commit. The
+  baseline runners (single-shot Hermes on Claude, single Codex session, Hermes `/goal`) MUST
+  exist before foreman's own loop is built. A new orchestrator capability is adopted only if a
+  decision replay of recorded tasks (every compared arm, from the same base, under the same
+  caps, sampled regardless of live outcome) shows it beats the best single-agent baseline by
+  the thresholds in ARCHITECTURE.md §16/Appendix D; otherwise it is rejected. Each task type is
+  judged the same way once it has enough recorded tasks of its own; code is first.
 - **The escalation ladder is enforced by the engine, not the model.** Attempt failures move
   through: retry same route with evidence → escalate to a different model family, fresh from
   the spec → replan (specifier sees all evidence) → block for human input. Loop guards (repeat
@@ -228,7 +264,7 @@ one-host system now has to operate forever (ARCHITECTURE.md §1, §3.7, §17).
   symlinks escaping the workspace. A violation MUST stop the node, record a security event, and
   alert — never pass silently.
 - **Continuous evaluation is the harness's own CI.** Any change to foreman's own prompts,
-  routes, or policy MUST run against the eval suite before being trusted in production, and
+  routes, or policy MUST be replayed against recorded tasks before being trusted, and
   prompt versions MUST be hashed per run so changes are attributable.
 - **Token economy.** Every LLM-calling step MUST have a token cap, use the cheapest route that
   meets its role's requirements, and reuse cached results (baselines, verified specs, context
@@ -249,7 +285,8 @@ one-host system now has to operate forever (ARCHITECTURE.md §1, §3.7, §17).
   expanded guidance, PATCH for wording/clarification only. `LAST_AMENDED_DATE` updates on
   every change; `RATIFICATION_DATE` never changes after initial adoption.
 - **Compliance review**: every plan's Constitution Check section, and every PR touching
-  `internal/engine`, `internal/verify`, `internal/policy`, or `internal/gitops`, MUST state
+  `internal/core/engine`, `internal/core/verify`, or an adapter that handles git, containers or
+  credentials, MUST state
   explicitly how it satisfies or is exempt from each Core Principle. A deliberate exception
   (e.g. a new dependency) MUST be logged in that plan's Complexity Tracking with the principle
   it trades off against.
@@ -261,4 +298,4 @@ one-host system now has to operate forever (ARCHITECTURE.md §1, §3.7, §17).
 - Use `ARCHITECTURE.md` (`/Users/dpcamargo/repos/harness-architecture/ARCHITECTURE.md`) as the
   authoritative design reference for anything this constitution does not itself resolve.
 
-**Version**: 2.0.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-07
+**Version**: 3.0.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-07

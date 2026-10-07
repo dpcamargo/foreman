@@ -19,8 +19,9 @@ escalation ladder rungs 1 through 3, with markdown and JSON reports."
 
 ### User Story 1 - Run one task end to end and get a verified result (Priority: P1)
 
-As the operator, I invoke `fm run <task.yaml> --arm harness` on one eval task (from Feature
-001's suite) and get back, deterministically: a spec, an implementation attempt from a
+As the operator, I invoke `fm run <task.yaml> --arm harness` on one task that comes with
+acceptance tests (a request, a repo pinned to a base commit, visible and hidden tests) and get
+back, deterministically: a spec, an implementation attempt from a
 headless coding CLI, a verification report from a clean no-network container, and a
 cross-family review — recorded in SQLite, not just printed to a terminal.
 
@@ -30,9 +31,10 @@ deterministic code, is the minimum viable version of the architecture's central 
 (Principle I/II of the constitution). Without this, nothing else in the roadmap has a
 foundation to build on.
 
-**Independent Test**: Can be fully tested by running `fm run` against a single task from
-Feature 001's suite with no daemon, no Telegram, and no memory service running, and inspecting
-the resulting SQLite rows and markdown report.
+**Independent Test**: Can be fully tested by running `fm run` against a single task with
+acceptance tests (for example, one recorded with Feature 001's `fm eval record`) with no daemon,
+no Telegram, and no memory service running, and inspecting the resulting SQLite rows, markdown
+report, and the task record it wrote.
 
 **Acceptance Scenarios**:
 
@@ -189,10 +191,10 @@ no duplicate or inconsistent database rows.
 - **FR-014**: The system MUST export implementer results as a patch or bundle from the
   disposable clone, and MUST NOT grant any implementer or verifier process access to a shared
   `.git` common directory (no linked-worktree sharing of hooks/config).
-- **FR-015**: The system MUST accept only tasks that come with tests (visible and hidden), such
-  as Feature 001 eval tasks, and MUST refuse a task without them with a clear message. Writing
-  tests for arbitrary tasks is Feature 004's test-author node; until it exists, this scope is
-  what keeps this feature within constitution Principle III.
+- **FR-015**: The system MUST accept only tasks that come with tests (visible and hidden), in
+  Feature 001's task-record format, and MUST refuse a task without them with a clear message.
+  Writing tests for arbitrary tasks is Feature 004's test-author node; until it exists, this
+  scope is what keeps this feature within constitution Principle III.
 - **FR-016**: The system MUST read a minimal per-repo `.foreman/project.yaml` declaring the
   verifier image, setup commands, verify commands, and protected paths, and MUST refuse to run
   against a repo whose file is missing or invalid. Later features extend this schema (risk
@@ -209,6 +211,10 @@ no duplicate or inconsistent database rows.
   its acceptance-criteria form, and its verifier. This feature implements only the `code` type,
   but MUST NOT hard-code code-only assumptions (repo, base commit, patch) into the shared
   task/node/run state, so later task types plug in without a schema rewrite.
+- **FR-021**: Every `fm run` MUST write a Feature 001 task record when the task ends, whatever
+  the outcome (verified success, failure, blocked, rescued), so the task joins the replay set.
+- **FR-022**: The harness MUST implement Feature 001's arm interface as arm `H1`, so recorded
+  tasks can be replayed through foreman exactly like the baseline arms.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -238,23 +244,25 @@ no duplicate or inconsistent database rows.
 ### Measurable Outcomes
 
 - **SC-001**: `fm run` executes a complete task — spec through report — with zero manual steps
-  beyond invoking the CLI once, for at least one task drawn from Feature 001's eval suite.
+  beyond invoking the CLI once, for at least one task with acceptance tests, and writes its
+  task record.
 - **SC-002**: Killing `fm run` mid-attempt and re-invoking it results in the interrupted
   attempt being retried from a fresh clone, with no duplicate or orphaned SQLite rows, 100% of
   the time across repeated trials.
 - **SC-003**: A deliberately-failing implementation (patch that fails a hidden test) never
   advances past verification as "succeeded," across 100% of test attempts.
-- **SC-004**: The harness arm (`H1`, this feature) run against Feature 001's eval suite
-  produces a report comparable in shape to the baseline arms' reports (same metrics columns),
-  enabling the go/no-go comparison the architecture requires before building anything further.
+- **SC-004**: A recorded task replayed through `H1` produces a report with the same metrics
+  columns as the baseline arms, so a decision replay can compare them directly.
 - **SC-005**: No verifier run has network access at any point during build, lint, or test
   execution, confirmed by attempting (and observing failure of) an outbound connection from
   inside the verification container during at least one test run.
-- **SC-006**: A go/no-go decision is recorded in the repo (eval report plus an ADR) using
-  ARCHITECTURE.md §16's thresholds on medium and hard tasks: H1 is a "go" only if it beats the
-  best baseline arm by at least 10 points of verified success, or halves the false-success rate,
-  at no more than 2× the cost per verified success. A "no-go" stops work on Features 003+ until
-  001/002 are fixed and re-evaluated.
+- **SC-006**: Once at least 15 replayable tasks have been recorded from real work, a decision
+  replay (Feature 001) compares H1 with the baseline arms, and the decision is recorded in the
+  repo (report plus an ADR) using ARCHITECTURE.md §16's thresholds on medium and hard tasks. H1
+  is a "go" only if it beats the best baseline arm by at least 10 points of verified success, or
+  halves the false-success rate, at no more than 2× the cost per verified success. Until then,
+  foreman's own further development runs through `fm run`, which is how the records accumulate.
+  A "no-go" stops work on new features until 001/002 are fixed and a new decision replay passes.
 - **SC-007**: No persisted transcript, prompt, log, or report contains a configured secret value
   or a token-pattern match, verified by scanning all run artifacts after a test run seeded with
   a canary secret.
@@ -277,7 +285,6 @@ no duplicate or inconsistent database rows.
 - Replan (ladder rung 4) and human-approval gating via Telegram are explicitly out of scope;
   rung 3's "mark for human attention" in this feature means a clear CLI-reported block state,
   not a Telegram message (that channel is Feature 003).
-- This feature depends on Feature 001's eval task format (`eval/tasks/<id>/`) existing, so that
-  `fm run`'s task input and the harness arm comparison share one task representation; it does
-  not require Feature 001's three baseline-arm runners to be functioning, only the task
-  packaging format.
+- This feature depends on Feature 001's task-record format, arm interface and clean-room grader,
+  so that `fm run`'s input, its records and the baseline replays share one task representation.
+  It does not require Feature 001's baseline arms to be working, only those three pieces.

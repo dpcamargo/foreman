@@ -58,9 +58,9 @@ the spec before any implementation attempt runs, and the verifier confirms those
 the unmodified base commit before the implementer ever sees them.
 
 **Why this priority**: This is constitution Principle III, previously only partially covered
-in Feature 002 (which assumed tests already existed from the eval suite); this feature makes
-test-authoring a first-class, spec-driven node for arbitrary production tasks, not just eval
-tasks.
+in Feature 002 (which accepts only tasks that already come with tests); this feature makes
+test-authoring a first-class, spec-driven node for arbitrary production tasks, not just tasks
+that arrive with tests.
 
 **Independent Test**: Can be tested by running a lane-S task through test-authoring only (no
 implementation yet) and confirming the authored tests compile/run and fail against the
@@ -278,7 +278,7 @@ of sample requests.
   `fm run`, including its retries), per `claude_subscription_unattended: false` in
   `policy.yaml`. For anything started without the operator (e.g. a scheduled job), the router
   MUST exclude the Claude family and use Codex (ChatGPT plan) or `agy` (Google plan) routes.
-- The classifier's accuracy is validated against Feature 001's eval-suite task-classification
-  labels before being trusted as the primary triage route; a small pre-trained or few-shot-
+- The classifier's accuracy is validated against the category labels on Feature 001's
+  recorded tasks before being trusted as the primary triage route; a small pre-trained or few-shot-
   calibrated encoder classifier is acceptable for v1, since FR-014's confidence-based fallback
   to the API route covers any cold-start accuracy gap.

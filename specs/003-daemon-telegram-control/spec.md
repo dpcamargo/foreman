@@ -121,7 +121,7 @@ feature's exit criterion in ARCHITECTURE.md §13) can't happen; results would st
 patch file. It also keeps "writing code" separate from "publishing code" (ARCHITECTURE.md
 §3.12): only this component holds push credentials.
 
-**Independent Test**: Can be tested by running one eval task end to end from Telegram and
+**Independent Test**: Can be tested by running one task with acceptance tests end to end from Telegram and
 confirming a draft PR appears on an `agent/*` branch with the evidence attached, that main is
 untouched, and that a merge happens only after the bound button is tapped.
 
@@ -248,7 +248,7 @@ untouched, and that a merge happens only after the bound button is tapped.
 - **SC-005**: No free-text message, in any tested phrasing (including ones that look like
   "yes, approved" or "go ahead"), is ever interpreted as an approval — only the bound inline
   button is.
-- **SC-006**: An eval task run end to end from Telegram ends as a draft PR on an `agent/*`
+- **SC-006**: A task with acceptance tests, run end to end from Telegram ends as a draft PR on an `agent/*`
   branch with spec, findings, and evidence attached; the default branch is never pushed to, and
   no merge occurs without the bound approval and its second confirmation.
 - **SC-007**: After a retention pass, no artifact older than its retention window remains on

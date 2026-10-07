@@ -5,13 +5,13 @@ This repository's spec-kit features are derived directly from the phased build o
 implementation: phased plan") and §16 ("First implementation: the smallest thing that tests
 the core hypothesis"). Each feature below maps to one architecture phase. Build strictly in
 order — each phase's exit criterion in §13 is a prerequisite for starting the next, per the
-constitution's "Evaluation precedes the harness" rule and Principle IX (minimal, justified
+constitution's "Measure as we go" rule and Principle IX (minimal, justified
 infrastructure).
 
 | # | Feature | Architecture source | Phase | Exit criterion (from ARCHITECTURE.md) |
 |---|---|---|---|---|
-| 001 | [Evaluation Harness](001-evaluation-harness/spec.md) | §0, §16, Appendix D | 0 | Every arm scoreable automatically, k=3 repetitions |
-| 002 | [Durable Execution Loop](002-durable-execution-loop/spec.md) | §1, §3.1/3.2/3.7/3.9/3.12, §7.5, §16 | 1 | Beats the best single-agent arm on Feature 001's suite, or stop |
+| 001 | [Evaluation Harness](001-evaluation-harness/spec.md) | §0, §16, Appendix D | 0 | A recorded task replays through every baseline arm and is graded automatically, k=3 |
+| 002 | [Durable Execution Loop](002-durable-execution-loop/spec.md) | §1, §3.1/3.2/3.7/3.9/3.12, §7.5, §16 | 1 | Beats the best single-agent arm on a decision replay of ≥15 recorded real tasks, or stop |
 | 003 | [Daemon + Telegram Control Plane](003-daemon-telegram-control/spec.md) | §3.1/3.13, §7.2-7.4, §9 | 2 | Run a task end to end from a phone; killing foreman mid-task loses nothing |
 | 004 | [Routing, Provider Health, Test-First](004-routing-test-first/spec.md) | §3.4/3.5, §4, §5 | 3 | Same or better success at lower $ per verified success |
 | 005 | [Memory Service](005-memory-service/spec.md) | §3.11, §6 | 4 | Fewer repeated failures, fewer attempts per success on repeat-repo tasks |
@@ -27,12 +27,14 @@ or tasks breakdown yet (`/speckit-plan` / `/speckit-tasks` not yet run for any f
 
 ## Why this order, not a different one
 
-- **001 before 002**: there is no way to know whether 002's loop is actually better than doing
-  nothing without 001's scoring infrastructure existing first (constitution: "Evaluation
-  precedes the harness").
+- **001 before 002**: 002 writes a task record for every run and is judged by replaying those
+  records through 001's baseline arms; both need 001's record format, arms and grader first
+  (constitution: "Measure as we go"). No eval suite is written up front.
 - **002 is the architecture's own go/no-go gate** (§16): if the harness arm doesn't beat the
   best single-agent baseline by the stated thresholds, the problem is spec/verification
-  quality, and the correct response is to fix 001/002, not to proceed to 003+.
+  quality, and the correct response is to fix 001/002, not to add features. The decision runs
+  once ≥15 replayable tasks exist; until then foreman's own development goes through `fm run`
+  so the records accumulate.
 - **003 before 004-009**: every later feature assumes unattended, remotely-observable
   operation; building routing/memory/DAG/decision-protocol sophistication before the control
   plane exists would make them hard to operate or debug.
@@ -56,15 +58,23 @@ or tasks breakdown yet (`/speckit-plan` / `/speckit-tasks` not yet run for any f
 | 011 | Docs | after 010 | Verifiable by build, link and lint checks plus a cross-family rubric; no external side effects |
 | 012 | Ops | after 011 and 008 | Changes real systems: needs dry-run-then-approve (003, constitution VIII) and credential injection through the egress proxy (008) so agents never hold target-system credentials |
 
-Each one ships its own verifier and eval task set, and is enabled only after beating a single-agent baseline for that task type.
+Each one ships its own verifier. Its go/no-go is a decision replay of its own recorded tasks against a single-agent baseline, once it has enough of them.
 
 ## Decisions
 
 - **Scope** — decided 2026-10-07 (spec 001 clarification): foreman orchestrates any kind of
   work, with code as one task type. Code comes first and carries the go/no-go; each further
-  task type (research, docs, ops) needs its own verifier and eval task set before it is enabled
-  (constitution v2.0.0, Principles II/III/VIII). Order decided: code → research → docs → ops
+  task type (research, docs, ops) needs its own verifier, and is judged by replaying its own recorded tasks
+  (constitution v2.0.0 Principles II/III/VIII; v3.0.0 "Measure as we go"). Order decided: code → research → docs → ops
   (see "Planned task-type features").
+- **Evaluation** — decided 2026-10-07 (spec 001 clarification): measure as we go. No upfront
+  eval suite and no mining of past commits; every task foreman runs is recorded, tasks with
+  acceptance tests are replayable, and spot checks plus decision replays compare foreman with
+  the single-agent baselines (constitution v3.0.0).
+- **Code layout** — decided 2026-10-07: hexagonal core/adapters split, KISS/YAGNI
+  (constitution Principle X; rules and target tree in [`AGENTS.md`](../AGENTS.md)). Sources: Go's
+  official module layout guide, Ardan Labs' `service` template, the operator's
+  `fullcycle-clean-architecture`.
 - **Orchestrator hosting** — decided 2026-10-07: `launchd` host process under a dedicated
   `foreman` macOS user with its own Colima profile mounting only its workspace root
   ([ADR 0001](../docs/adr/0001-orchestrator-hosting.md), constitution v1.1.1).
@@ -87,11 +97,16 @@ Each one ships its own verifier and eval task set, and is enabled only after bea
   class (22M–86M params); a small sentence-embedding model (22M–100M params).
 - 005 vector index: `sqlite-vec` inside the existing SQLite file, only if BM25 recall is
   measured short.
+- 001 task-record store: location outside every arm-readable workspace, and its format
+  versioning (spec 001 FR-003).
+- 001/002 code layout: start from the target tree in `AGENTS.md`, creating only the packages a
+  task needs.
 - 001/002 grader and verifier: image choice per language (Go/Node), dependency-cache strategy,
   exact `docker run` hardening flags.
 - 002 Claude runner: exact Hermes invocation for a confined, MCP-free implementer profile.
 
 ## Next steps
 
-1. Run `/speckit-clarify` on `001-evaluation-harness`, then `/speckit-plan` for 001 — no other
-   feature's plan should start before 001's plan exists and 002's go/no-go has run.
+1. Run `/speckit-plan` for 001 (clarification done), then 002. Features after 002 may be built
+   through `fm run` before the go/no-go (that is how the records accumulate); a "no-go" stops
+   them until 001/002 are fixed.
