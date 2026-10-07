@@ -20,7 +20,7 @@ automatically before it's trusted."
 As the operator, I package 15–20 real tasks (bug fix, small feature, refactor, dependency
 change, research/diagnosis, deliberately ambiguous) from my own repos, each pinned to a base
 commit with hidden tests and, where judgment is needed, a rubric. I run one "arm" (for
-example, a single Claude Code session) against the whole suite and get back a score per task
+example, a single-shot Hermes session on Claude) against the whole suite and get back a score per task
 and an aggregate.
 
 **Why this priority**: Without this, there is no way to tell whether foreman (built in later
@@ -29,13 +29,13 @@ Development Workflow's "Evaluation precedes the harness") forbids adopting new o
 capability without this baseline existing first.
 
 **Independent Test**: Can be fully tested by running the suite against a single, trivially
-available arm (`claude -p` alone) end to end and getting a scored report, with zero foreman
+available arm (A1, `codex exec` alone) end to end and getting a scored report, with zero foreman
 orchestrator code involved.
 
 **Acceptance Scenarios**:
 
 1. **Given** a packaged eval task with a pinned base commit, a prompt, and hidden tests,
-   **When** the baseline runner executes arm A0 (one Claude Code session) against it,
+   **When** the baseline runner executes arm A0 (one single-shot Hermes session on Claude) against it,
    **Then** the runner produces a pass/fail result graded in a clean container against the
    hidden tests, with no network access during grading.
 2. **Given** a task whose correct behavior is to stop and ask rather than guess,
@@ -49,7 +49,7 @@ orchestrator code involved.
 
 ### User Story 2 - Compare arms on cost and time, not just pass/fail (Priority: P1)
 
-As the operator, after running multiple arms (A0: Claude Code alone, A1: Codex exec alone,
+As the operator, after running multiple arms (A0: single-shot Hermes on Claude, A1: Codex exec alone,
 A2: Hermes `/goal`) against the same suite, I get a comparison report showing success rate,
 false-success rate, cost (API-equivalent dollars and/or subscription quota units), wall-clock
 time, and human-rescue count per arm, so I can set the numeric bar that a later harness
@@ -136,14 +136,18 @@ and re-running the existing comparison command with no other changes.
   dependency/tooling change, research/diagnosis, or ambiguous/impossible, at roughly the
   proportions in Appendix D (30/25/15/10/10/10%).
 - **FR-003**: The system MUST provide a runner for each of the three baseline arms (A0: one
-  Claude Code session, A1: one `codex exec` session, A2: Hermes `/goal` or a Kanban `--goal`
-  card) that takes a task directory and produces a patch (or no-op/clarification-request) plus
-  a transcript.
+  single-shot Hermes session on Claude, using the operator's existing Anthropic subscription
+  login; A1: one `codex exec` session; A2: Hermes `/goal` or a Kanban `--goal` card) that takes
+  a task directory and produces a patch (or no-op/clarification-request) plus a transcript.
+  Claude-family runs MUST be operator-triggered (the operator starts the eval run); nothing in
+  this feature schedules them automatically.
 - **FR-004**: The system MUST grade every run in a clean, isolated container: apply the
   produced patch to a fresh clone of the pinned base commit, run the hidden tests, and record
   pass/fail per hidden test plus any rubric-graded verdict.
-- **FR-005**: The system MUST run each (task, arm) pair k=3 times from the same base, under the
-  same budget, and compute both the simple success rate and the pass^3 reliability metric.
+- **FR-005**: The system MUST support two run stages: a smoke stage (a small task subset,
+  k=1) that MUST pass cleanly before any decision-grade stage is started, and a decision-grade
+  stage that runs each (task, arm) pair k=3 times from the same base, under the same budget,
+  computing both the simple success rate and the pass^3 reliability metric.
 - **FR-006**: The system MUST capture, per run: success/failure, which hidden tests passed or
   failed, wall-clock time, token/dollar cost or subscription-quota units consumed, and whether
   human rescue was invoked (and must therefore not be auto-resolved).
@@ -168,15 +172,27 @@ and re-running the existing comparison command with no other changes.
   comparison described in Appendix D (McNemar's test for success, bootstrap confidence
   intervals for cost/time) — the harness itself does not have to compute the statistics, but
   MUST NOT discard the paired data needed to compute them later.
+- **FR-014**: This feature MUST own the clean-room grader (fresh clone at the pinned base, patch
+  applied, hidden tests mounted read-only, no network, no host credentials, no bind mounts
+  beyond the patched clone, the hidden tests, and read-only dependency caches) as a reusable
+  component. Feature 002's verifier reuses and extends it; this feature MUST NOT depend on 002.
+- **FR-015**: Every arm run MUST have a hard token cap and a wall-clock cap; a run that hits
+  either cap is stopped and recorded as failed for that run, never silently extended.
+- **FR-016**: Baseline results MUST be cached by (task id, base commit, arm, arm version) and
+  reused across later comparisons; a baseline arm is re-run only when one of those keys changes.
+- **FR-017**: The system MUST report the total tokens, quota units, and wall-clock time spent by
+  each eval run itself, per arm and in aggregate, and MUST refuse to start a decision-grade stage
+  whose projected token spend (from smoke-stage measurements) exceeds an operator-set budget.
 
 ### Key Entities *(include if feature involves data)*
 
 - **Eval Task**: a packaged, pinned (repo, base commit, prompt, hidden tests, reference diff,
   optional rubric) unit of work; has a category (bug fix / feature / refactor / dependency /
   research / ambiguous) and a wall-clock budget.
-- **Arm**: a named way of attempting a task (A0 Claude Code, A1 Codex exec, A2 Hermes `/goal`,
-  and later H1+ from Feature 002 onward); produces a patch or a structured
-  "asked for clarification" result plus a transcript.
+- **Arm**: a named way of attempting a task (A0 single-shot Hermes on Claude, A1 Codex exec,
+  A2 Hermes `/goal`, and later H1+ from Feature 002 onward); produces a patch or a structured
+  "asked for clarification" result plus a transcript. Its version (CLI/model/prompt) is part of
+  the baseline cache key.
 - **Run**: one attempt of (task, arm) at a given repetition index; has a status, cost, timing,
   and a graded result.
 - **Grading Result**: per-run outcome: which hidden tests passed/failed, rubric verdict if
@@ -188,9 +204,9 @@ and re-running the existing comparison command with no other changes.
 
 ### Measurable Outcomes
 
-- **SC-001**: A 15–20 task suite can be run against all three baseline arms (A0, A1, A2), with
-  k=3 repetitions each, and produce a complete comparison report, without any manual grading
-  step for the ~80% of tasks that are hidden-test-graded.
+- **SC-001**: A smoke stage (about 5 tasks, k=1) and then a decision-grade stage (15–20 tasks,
+  k=3) can be run against the baseline arms (A0, A1, A2) and produce a complete comparison report,
+  without any manual grading step for the ~80% of tasks that are hidden-test-graded.
 - **SC-002**: Every run's grading happens in a container with no network access, and 100% of
   graded runs have a recorded cost/quota figure and wall-clock time.
 - **SC-003**: Adding a new task to the suite requires creating exactly one new directory under
@@ -201,6 +217,9 @@ and re-running the existing comparison command with no other changes.
 - **SC-005**: The two deliberately ambiguous tasks in the suite are scored correctly (asking
   for clarification counted as success, guessing counted as failure) for every arm capable of
   producing a "stop and ask" result.
+- **SC-006**: No arm run exceeds its token or wall-clock cap, no baseline is re-run when its
+  cache key is unchanged, and every eval report states the total tokens and quota the eval
+  itself consumed.
 
 ## Assumptions
 
@@ -208,9 +227,16 @@ and re-running the existing comparison command with no other changes.
   the Hugo site, and other existing repos referenced in ARCHITECTURE.md §16, by hand-selecting
   past commits and deriving or writing hidden tests; task curation itself is manual, tooling-
   assisted work, not something this feature automates.
-- Grading containers reuse the same base images/approach as the verifier described in Feature
-  002 (`docker run --network=none`); this feature does not re-specify container image
-  provisioning beyond requiring network isolation during grading.
+- Grading runs in containers on the operator's Colima VM (4 CPUs / 6 GiB). Colima mounts the
+  operator's home directory read-write into its VM, so the grader MUST pass only explicit
+  mounts (FR-014); container image choice is a `/speckit-plan` decision.
+- Claude-family arms run through Hermes on the operator's existing Anthropic subscription
+  login, by operator decision. ARCHITECTURE.md §0 records that third-party apps on this login
+  may be billed as extra usage, so the first smoke stage MUST be followed by a check of the
+  account's usage page before any decision-grade stage is started.
+- Token economy over statistical power: fewer tasks and repetitions means only large
+  differences are detectable. That is acceptable here because the go/no-go thresholds in
+  ARCHITECTURE.md §16 are large (≥10 points, or half the false-success rate).
 - Arm A2 (Hermes `/goal`) is invoked through whatever interface Hermes exposes at the time this
   feature is built (API server or Kanban `--goal` card per ARCHITECTURE.md §1 option A row);
   the exact invocation mechanics are an implementation detail resolved during `/speckit-plan`,

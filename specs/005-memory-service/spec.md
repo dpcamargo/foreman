@@ -120,7 +120,7 @@ succeeded or failed.
 
 As the operator, if BM25-only retrieval's measured recall on a query set falls short
 (paraphrases missed, not just keyword mismatches), I can enable a local embedding path —
-`sqlite-vec` in the same database file, populated by a small local embedding model — so
+a vector index in the same SQLite database file, populated by a small local embedding model — so
 retrieval quality can improve with zero marginal per-call cost and no embedding API ever in
 the loop.
 
@@ -137,7 +137,7 @@ fusion) retrieval improves recall on the same query set, entirely offline.
 
 1. **Given** BM25-only retrieval's measured recall on a query set falls below an operator-set
    threshold, **When** the operator enables the embedding path, **Then** lessons, episodes,
-   and ADRs are embedded using a local model and stored in `sqlite-vec` alongside the existing
+   and ADRs are embedded using a local model and stored in that vector index alongside the existing
    FTS5 index.
 2. **Given** both BM25 and vector results exist for a query, **When** `ContextPack` assembles
    results, **Then** it combines them via reciprocal rank fusion rather than preferring either
@@ -309,7 +309,7 @@ measurably below the first run's.
 - **FR-012**: The system MUST expose project-level memory (`AGENTS.md`, `.foreman/project.yaml`,
   `docs/adr/`) as git-tracked files in the target repo, readable natively by every agent CLI
   (not only through the context-pack mechanism).
-- **FR-013**: The system MUST provide an optional local vector-embedding path (`sqlite-vec`,
+- **FR-013**: The system MUST provide an optional local vector-embedding path (a vector index
   in the same database file) for lessons, episodes, and ADRs, computed by a local embedding
   model with no network call, combined with FTS5 BM25 results via reciprocal rank fusion when
   enabled; this path MUST be disabled by default.
@@ -361,7 +361,7 @@ measurably below the first run's.
   confidence, reversibility, dissent — recorded both in SQLite and as a repo markdown file.
 - **Context Pack**: the token-budgeted, deterministically-assembled bundle of memory content
   for one (task, node) LLM call.
-- **Local Embedding Model**: a small, host-local text embedding model populating `sqlite-vec`,
+- **Local Embedding Model**: a small, host-local text embedding model populating the vector index,
   enabled only after a measured BM25 recall shortfall; disabled (no-op) by default.
 - **Content Screening Result**: a classifier verdict (clear / flagged-low / flagged-high)
   attached to any untrusted content before it is used in a context pack, lesson candidate, or
@@ -412,7 +412,7 @@ measurably below the first run's.
   Telegram control plane built in Feature 003; this feature does not re-specify Telegram
   delivery mechanics, only the gating rule and the data needed to render the batch.
 - ADR markdown files are written to `docs/adr/` in the target repo by the same integrator
-  component that will later (Feature 004 onward) push branches/PRs; this feature assumes that
+  component Feature 003 introduces to push branches/PRs; this feature assumes that
   write path exists in some form (even a simple git-commit helper) as a prerequisite, and
   treats full PR integration as out of scope here.
 - BM25 via FTS5 plus structured filters is the default and complete retrieval mechanism.
@@ -420,8 +420,8 @@ measurably below the first run's.
   SQLite file, enabled only after a measured BM25 recall shortfall — consistent with
   constitution Principle IX and ARCHITECTURE.md §6's verdict table.
 - The local embedding model (FR-013–014) and the content-screening classifier (FR-015–017)
-  both run in-process inside the foreman daemon via the same local inference runtime (e.g.
-  ONNX Runtime) that Feature 004's local triage classifier uses — one shared runtime hosting
+  both run in-process inside the foreman daemon via the same local inference runtime (chosen
+  in `/speckit-plan`) that Feature 004's local triage classifier uses — one shared runtime hosting
   multiple small models, not one container or sidecar process per model, per constitution
   Principle IX.
 - Content screening and the embedding path never require access to a sandboxed container's

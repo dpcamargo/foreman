@@ -75,8 +75,9 @@ unmodified base commit.
    base commit, **Then** every new test MUST fail (if a new test instead passes on base, the
    test-author step is rejected and re-run with that evidence).
 3. **Given** a test-author output, **When** the implement node later runs, **Then** it receives
-   the visible subset of the authored tests in its workspace, while any hidden subset
-   (per Feature 002's existing hidden-test handling) remains withheld.
+   only the visible subset of the authored tests in its workspace; the hidden subset the test
+   author produced is stored outside every workspace and mounted read-only only into the
+   verifier, exactly as Feature 002 handles eval-provided hidden tests.
 
 ---
 
@@ -186,7 +187,10 @@ of sample requests.
   self-reported difficulty or confidence — only on verifier, provider, or infra signals.
 - **FR-007**: The system MUST add a `test_author` node that runs before `implement` whenever
   the task's lane requires `test_first: true`, using a model family different from the
-  implementer's assigned family for that task.
+  implementer's assigned family for that task. The test author MUST produce both a visible test
+  set and a separate hidden test set; the hidden set MUST be stored outside every agent
+  workspace and exposed only to the verifier, read-only. This lifts Feature 002's
+  "tasks must come with tests" restriction for lanes S and D.
 - **FR-008**: The system MUST verify every test-author output fails on the unmodified base
   commit before it is handed to the implementer, and MUST re-run test-authoring with that
   evidence if any new test instead passes on base.
@@ -266,9 +270,14 @@ of sample requests.
   rather than being derived statistically, since there is not yet enough historical data to
   derive it (that arrives naturally as FR-011's statistics accumulate).
 - The local triage classifier (FR-013–015) runs in-process inside the foreman daemon via a
-  local inference runtime (e.g. ONNX Runtime) loading a quantized encoder model — it is not a
-  separate container, sidecar process, or network service, consistent with constitution
-  Principle IX (minimal, justified infrastructure).
+  local inference runtime loading a small quantized encoder model (runtime choice is a
+  `/speckit-plan` decision) — it is not a separate container, sidecar process, or network
+  service, consistent with constitution Principle IX (minimal, justified infrastructure).
+- Claude-family routes run through Hermes on the operator's Anthropic subscription login and
+  are eligible only for operator-triggered tasks (a task the operator started via `/task` or
+  `fm run`, including its retries), per `claude_subscription_unattended: false` in
+  `policy.yaml`. For anything started without the operator (e.g. a scheduled job), the router
+  MUST exclude the Claude family and use Codex (ChatGPT plan) or `agy` (Google plan) routes.
 - The classifier's accuracy is validated against Feature 001's eval-suite task-classification
   labels before being trusted as the primary triage route; a small pre-trained or few-shot-
   calibrated encoder classifier is acceptable for v1, since FR-014's confidence-based fallback

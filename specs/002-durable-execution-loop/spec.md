@@ -152,9 +152,13 @@ no duplicate or inconsistent database rows.
   `TaskSpec` (acceptance criteria, a verification plan naming concrete commands, and — where
   relevant — a decomposition), and MUST reject a spec whose cited verification commands fail
   to run or whose cited files/symbols don't exist on the base commit.
-- **FR-005**: The system MUST provide at least two implementer runners (`codex exec` and
-  `claude -p`), each normalizing CLI output to a common result shape: status, structured JSON
-  output, usage/cost, transcript path, exported patch, failure class, and failure signature.
+- **FR-005**: The system MUST provide at least two implementer runners — `codex exec`, and a
+  Claude-family runner that executes through Hermes on the operator's Anthropic subscription
+  login — each normalizing output to a common result shape: status, structured JSON output,
+  usage/cost, transcript path, exported patch, failure class, and failure signature. The
+  Hermes-based runner MUST use a dedicated Hermes profile with no MCP servers (in particular no
+  GitHub token), only file and terminal tools, its working directory confined to the run's
+  clone, and MUST only run when the operator triggered the task.
 - **FR-006**: The system MUST run every verification pass in a container with `--network=none`,
   executing: build, lint/vet, visible tests, then hidden tests (never present in the
   implementer's workspace), then diff-policy checks (no test deletion, no undisclosed
@@ -185,6 +189,19 @@ no duplicate or inconsistent database rows.
 - **FR-014**: The system MUST export implementer results as a patch or bundle from the
   disposable clone, and MUST NOT grant any implementer or verifier process access to a shared
   `.git` common directory (no linked-worktree sharing of hooks/config).
+- **FR-015**: The system MUST accept only tasks that come with tests (visible and hidden), such
+  as Feature 001 eval tasks, and MUST refuse a task without them with a clear message. Writing
+  tests for arbitrary tasks is Feature 004's test-author node; until it exists, this scope is
+  what keeps this feature within constitution Principle III.
+- **FR-016**: The system MUST read a minimal per-repo `.foreman/project.yaml` declaring the
+  verifier image, setup commands, verify commands, and protected paths, and MUST refuse to run
+  against a repo whose file is missing or invalid. Later features extend this schema (risk
+  overrides in 004, memory pointers in 005) without breaking existing files.
+- **FR-017**: The system MUST redact secrets at write time — by known secret values (from the
+  host's configured credentials) and by common token patterns — from every transcript, prompt,
+  context, verifier log, and report it persists. Unredacted copies MUST NOT be written to disk.
+- **FR-018**: The verifier MUST reuse Feature 001's clean-room grader component, extended with
+  diff-policy checks and visible-test runs, rather than a second implementation.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -201,6 +218,10 @@ no duplicate or inconsistent database rows.
   visible tests, hidden tests, and each diff-policy check.
 - **ReviewFindings**: the reviewer's structured output — findings with severity, location,
   evidence, and repro where applicable.
+- **Project Config** (`.foreman/project.yaml`): per-repo verifier image, setup commands, verify
+  commands, and protected paths; minimal here, extended by later features.
+- **Go/No-Go Record**: the written outcome of comparing H1 against the best baseline arm —
+  the thresholds applied, the measured numbers, and the decision.
 
 ## Success Criteria *(mandatory)*
 
@@ -219,6 +240,14 @@ no duplicate or inconsistent database rows.
 - **SC-005**: No verifier run has network access at any point during build, lint, or test
   execution, confirmed by attempting (and observing failure of) an outbound connection from
   inside the verification container during at least one test run.
+- **SC-006**: A go/no-go decision is recorded in the repo (eval report plus an ADR) using
+  ARCHITECTURE.md §16's thresholds on medium and hard tasks: H1 is a "go" only if it beats the
+  best baseline arm by at least 10 points of verified success, or halves the false-success rate,
+  at no more than 2× the cost per verified success. A "no-go" stops work on Features 003+ until
+  001/002 are fixed and re-evaluated.
+- **SC-007**: No persisted transcript, prompt, log, or report contains a configured secret value
+  or a token-pattern match, verified by scanning all run artifacts after a test run seeded with
+  a canary secret.
 
 ## Assumptions
 
@@ -226,12 +255,14 @@ no duplicate or inconsistent database rows.
   the fuller Phase 1 daemon described in §13 — no Telegram, no persistent daemon process, no
   policy.yaml-driven lanes/budgets beyond what's needed to run the ladder. Those arrive in
   Features 003 and 004.
-- Only two implementer runners (`codex exec`, `claude -p`) are required for this feature; the
-  third family (`agy`, Antigravity) is deferred to Feature 004 (routing), since rung 2's
-  "different family" requirement is satisfiable with two families alone.
-- The dedicated OS user and container-based verifier assume Docker Desktop is available and
-  its VM resources have been raised per ARCHITECTURE.md §0/§8.5 recommendations; provisioning
-  that VM is an operational prerequisite, not a deliverable of this feature.
+- Only two implementer runners (`codex exec`, and Claude via Hermes) are required for this
+  feature; the third family (`agy`, Antigravity) is deferred to Feature 004 (routing), since
+  rung 2's "different family" requirement is satisfiable with two families alone.
+- The verifier runs on the operator's Colima VM, already raised to 4 CPUs / 6 GiB. Colima
+  mounts the operator's home directory read-write into its VM, so verifier containers MUST get
+  no bind mounts beyond the patched clone, read-only hidden tests, and read-only dependency
+  caches. Where foreman itself runs (host process under a dedicated OS user vs. container) is
+  an open decision recorded in specs/ROADMAP.md and MUST be settled before `/speckit-plan`.
 - Replan (ladder rung 4) and human-approval gating via Telegram are explicitly out of scope;
   rung 3's "mark for human attention" in this feature means a clear CLI-reported block state,
   not a Telegram message (that channel is Feature 003).

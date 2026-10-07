@@ -86,7 +86,7 @@ rewriting the engine (Priority: P2)
 
 As the operator, the sandbox manager supports at least one of the evaluated phase-7 isolation
 backends (Docker Sandboxes/microVM, Apple `container`, or hardened Docker containers in the
-shared Desktop VM) behind one `Sandbox` interface, so moving to an always-on host later (a Mac
+shared Colima VM) behind one `Sandbox` interface, so moving to an always-on host later (a Mac
 mini or a Linux box) doesn't require re-architecting node dispatch.
 
 **Why this priority**: Keeps the engine's contract with sandboxes (`Prepare`/`Export`/
@@ -107,7 +107,7 @@ mechanism differing.
 2. **Given** a per-node container or microVM backend is active, **When** a node's workspace is
    prepared, **Then** it gets its own filesystem and network namespace, isolated from sibling
    nodes' workspaces, not merely a different OS-user-owned directory.
-3. **Given** the weakest evaluated option (hardened Docker containers sharing the Desktop VM's
+3. **Given** the weakest evaluated option (hardened Docker containers sharing the Colima VM's
    kernel) is selected, **When** isolation is assessed, **Then** the system still enforces
    non-root, `--cap-drop ALL`, `no-new-privileges`, read-only rootfs plus tmpfs, and pids/
    memory/CPU limits — the "weakest of the three" option is still hardened, not merely
@@ -204,7 +204,7 @@ mechanism differing.
   interface during a migration window, per FR-008.
 - Among the three evaluated backends in ARCHITECTURE.md §8.3, this feature's `/speckit-plan`
   is expected to select ONE as the initial concrete implementation (most likely hardened Docker
-  containers in the existing Desktop VM, since it requires no new platform dependency),
+  containers in the existing Colima VM, since it requires no new platform dependency),
   leaving Docker Sandboxes and Apple `container` as documented, interface-compatible
   alternatives rather than all three being built simultaneously.
 - The credential-injecting egress proxy reuses the pattern Hermes already ships

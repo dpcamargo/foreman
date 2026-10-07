@@ -1,5 +1,17 @@
 <!--
 Sync Impact Report
+Version change: 1.0.0 → 1.1.0
+Rationale: MINOR — one rule redefined to match its source (unattended model use is now
+  per-vendor terms, not "API keys only"), and one materially new quality gate (token economy).
+Modified sections:
+  - Technology Stack: "Unattended model use" rewritten per vendor terms; Claude worker is
+    now "Claude via Hermes" (operator decision); orchestrator hosting marked OPEN.
+  - Development Workflow: baseline arms renamed to match spec 001; new "Token economy" gate.
+Principles I–IX: unchanged.
+Deferred: TODO(ORCHESTRATOR_HOSTING) — launchd host process vs container; must be decided
+  before /speckit-plan (see specs/ROADMAP.md).
+
+Previous report (v1.0.0):
 Version change: (none, template) → 1.0.0
 Rationale: MINOR/MAJOR not applicable to an initial ratification — treated as the baseline
   major version per semver convention for a project's first governing document.
@@ -24,8 +36,8 @@ Templates requiring follow-up: none checked yet against this constitution (no pl
 # Foreman Constitution
 
 Foreman is a deterministic Go orchestrator for autonomous software engineering: it owns task
-state, budgets and approval gates; dispatches headless vendor agent CLIs (Codex, Claude Code,
-Antigravity) as coding workers; and treats execution-based verification, not model agreement,
+state, budgets and approval gates; dispatches headless vendor agent CLIs (Codex, Antigravity, and
+Claude via Hermes) as coding workers; and treats execution-based verification, not model agreement,
 as the sole arbiter of "done." Hermes is the conversational front end, web-research worker and
 personal memory — never the control loop. This constitution codifies the non-negotiable design
 corrections in `/Users/dpcamargo/repos/harness-architecture/ARCHITECTURE.md`; it is binding on
@@ -134,13 +146,16 @@ one-host system now has to operate forever (ARCHITECTURE.md §1, §3.7, §17).
 
 ## Technology Stack & Component Boundaries
 
-- **Orchestrator**: Go, one binary, run by `launchd`/as a persistent container; a
+- **Orchestrator**: Go, one binary; hosting is TODO(ORCHESTRATOR_HOSTING) — `launchd` host
+  process under a dedicated OS user, or a persistent container — to be decided before the
+  first `/speckit-plan`. Either way: a
   level-triggered reconcile loop plus in-process event wakeups. No workflow framework
   (Temporal, DBOS, LangGraph) until the DAG outgrows a data-driven model — see Principle IX.
 - **Store**: SQLite in WAL mode (`modernc.org/sqlite` or `mattn/go-sqlite3`), FTS5, `sqlc`,
   versioned migrations. One writer process. PostgreSQL is out of scope until multiple hosts
   write concurrently.
-- **Coding workers**: headless vendor CLIs only — `codex exec`, `claude -p`, `agy -p` — each
+- **Coding workers**: headless vendor agents only — `codex exec`, `agy -p`, and Claude via a
+  dedicated Hermes profile (no MCP servers, file/terminal tools only) — each
   normalized to a `RunResult` (status, structured JSON, usage, transcript path, patch,
   failure class/signature). No custom coding-agent loop.
 - **Research/front end**: Hermes, invoked via its API server or MCP tools, scoped to
@@ -152,14 +167,16 @@ one-host system now has to operate forever (ARCHITECTURE.md §1, §3.7, §17).
 - **Credentials**: API keys, the Telegram bot token, and a fine-grained, repo-scoped GitHub
   integrator token live only on the trusted host process. Agent sandboxes and the verifier
   MUST NEVER hold personal `gh`/SSH credentials or network access to secrets.
-- **Unattended model use**: unattended/automated LLM calls MUST run on API keys with
-  per-task budget caps, never on a subscription OAuth session reserved for sessions a human
-  starts (per each vendor's own terms).
+- **Unattended model use**: subscription logins MUST be used only as each vendor's terms
+  allow. The Anthropic subscription (Claude via Hermes) MUST be used only for tasks the
+  operator started (`claude_subscription_unattended: false`); vendors whose terms allow
+  automated plan use (e.g. Codex on a ChatGPT plan) may run unattended. Any API-key route MUST
+  carry a per-task budget cap.
 
 ## Development Workflow & Quality Gates
 
 - **Evaluation precedes the harness.** A task suite with hidden tests and a baseline runner
-  (single Claude Code session, single Codex session, Hermes `/goal`) MUST exist and be
+  (single-shot Hermes on Claude, single Codex session, Hermes `/goal`) MUST exist and be
   scoreable before new orchestrator capability is adopted; a change is adopted only if it
   beats the best single-agent baseline by the thresholds in ARCHITECTURE.md §16/Appendix D, or
   is rejected.
@@ -179,6 +196,10 @@ one-host system now has to operate forever (ARCHITECTURE.md §1, §3.7, §17).
 - **Continuous evaluation is the harness's own CI.** Any change to foreman's own prompts,
   routes, or policy MUST run against the eval suite before being trusted in production, and
   prompt versions MUST be hashed per run so changes are attributable.
+- **Token economy.** Every LLM-calling step MUST have a token cap, use the cheapest route that
+  meets its role's requirements, and reuse cached results (baselines, verified specs, context
+  packs) instead of recomputing them. Token and quota spend MUST be reported per task and per
+  eval run; a component with no measured spend is not done.
 - **Spec and plan review follow the Constitution Check.** Every `/speckit-plan` MUST map each
   touched principle above to a concrete mechanism (which file enforces it, which test proves
   it) before implementation starts.
@@ -206,4 +227,4 @@ one-host system now has to operate forever (ARCHITECTURE.md §1, §3.7, §17).
 - Use `ARCHITECTURE.md` (`/Users/dpcamargo/repos/harness-architecture/ARCHITECTURE.md`) as the
   authoritative design reference for anything this constitution does not itself resolve.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-06
+**Version**: 1.1.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-07

@@ -108,6 +108,41 @@ it, and confirming the reconciler recovers all leases.
 
 ---
 
+### User Story 4 - Deliver a verified result as a draft PR, merge only on approval
+(Priority: P1)
+
+As the operator, when a task's result has passed verification and review, foreman applies the
+verified patch to an `agent/<task>` branch, pushes it, and opens a draft pull request that
+carries the spec, the review findings, and the test evidence. Nothing reaches the protected
+main branch unless policy allows it or I tap a nonce-bound **[Merge]** button.
+
+**Why this priority**: Without delivery, "run a task end to end from your phone" (this
+feature's exit criterion in ARCHITECTURE.md §13) can't happen; results would stop at a local
+patch file. It also keeps "writing code" separate from "publishing code" (ARCHITECTURE.md
+§3.12): only this component holds push credentials.
+
+**Independent Test**: Can be tested by running one eval task end to end from Telegram and
+confirming a draft PR appears on an `agent/*` branch with the evidence attached, that main is
+untouched, and that a merge happens only after the bound button is tapped.
+
+**Acceptance Scenarios**:
+
+1. **Given** a task whose result passed verification and review, **When** delivery runs,
+   **Then** the integrator applies the patch to `agent/<task>` in the host-side mirror with
+   git hooks and fsmonitor disabled, pushes that branch, and opens a draft PR containing the
+   spec, review findings, verifier evidence, and cost.
+2. **Given** a delivered draft PR, **When** the operator taps **[Merge]**, **Then** the merge
+   proceeds only if the button's nonce matches the sha256 of the exact diff being merged, and
+   only after a second confirmation step (merging to main is a destructive operation per
+   ARCHITECTURE.md §9).
+3. **Given** a push or PR-creation failure (network, auth, rate limit), **When** it occurs,
+   **Then** it is recorded as an infra/provider failure and retried with backoff, and the
+   verified patch is never lost or re-generated.
+4. **Given** any component other than the integrator (implementer, verifier, Hermes), **When**
+   its environment is inspected, **Then** it holds no GitHub push credential.
+
+---
+
 ### Edge Cases
 
 - What happens when Telegram is unreachable (network outage, API down)? Tasks MUST continue
@@ -145,9 +180,10 @@ it, and confirming the reconciler recovers all leases.
 - **FR-005**: The system MUST bind every approval request to a nonce tied to the sha256 of the
   exact artifact (spec, diff) being approved, and MUST reject any approval attempt whose nonce
   does not match the current artifact's hash.
-- **FR-006**: The system MUST treat free-text Telegram messages as conversational input routed
-  to Hermes (Feature 007), and MUST NOT allow any such message, or any Hermes-generated
-  summary, to approve, reject, cancel, or change policy.
+- **FR-006**: The system MUST NOT allow any free-text Telegram message, or any Hermes-generated
+  summary, to approve, reject, cancel, or change policy. Until Feature 007 wires in the Hermes
+  relay, free text MUST receive a fixed reply ("chat isn't enabled yet; use /commands") and MUST
+  NOT be parsed as a command; after 007, it is relayed to Hermes as conversation only.
 - **FR-007**: The system MUST implement an append-only notification outbox with a durable
   cursor over the events table (from Feature 002), delivering queued notifications, coalesced
   into a digest, when Telegram connectivity is restored after an outage.
@@ -167,6 +203,22 @@ it, and confirming the reconciler recovers all leases.
 - **FR-013**: The local unix-socket API MUST be reachable only by processes running as the
   `foreman` user (the bot and the local `fm` CLI), and MUST reject connections from other
   principals.
+- **FR-014**: The system MUST include an integrator that is the only component holding GitHub
+  push credentials: a fine-grained token limited to selected repos, `agent/*` branches, and
+  pull requests. It MUST never push to the default branch directly.
+- **FR-015**: The integrator MUST apply only verified patches, with hardened git (hooks path
+  disabled, fsmonitor off), to `agent/<task>` in the host-side mirror, push that branch, and
+  open a draft PR containing the spec, review findings, verifier evidence, and cost/usage.
+- **FR-016**: Merging a delivered PR MUST require either a policy rule that explicitly allows it
+  for that task's risk class (default: none) or a nonce-bound **[Merge]** approval plus a second
+  confirmation step.
+- **FR-017**: Push or PR-creation failures MUST be classified as infra/provider failures and
+  retried with backoff, never as attempt failures, and MUST NOT cause the verified patch to be
+  discarded or regenerated.
+- **FR-018**: The daemon MUST enforce retention: full transcripts, prompts-as-sent, context
+  packs, and verifier logs kept 90 days; container output and failed-run workspaces kept 7 days
+  (configurable up to 14); successful-run workspaces deleted on success; structured records in
+  SQLite kept permanently. Secrets are never stored (redacted at write time per Feature 002).
 
 ### Key Entities *(include if feature involves data)*
 
@@ -178,6 +230,8 @@ it, and confirming the reconciler recovers all leases.
   surviving restarts.
 - **Notification Digest**: a coalesced batch of queued notifications delivered after a
   reconnect or burst.
+- **Delivery**: a task's `agent/<task>` branch, its draft PR URL, the sha256 of the delivered
+  diff, and merge status (open / merged / closed), with the approval that authorized any merge.
 
 ## Success Criteria *(mandatory)*
 
@@ -194,6 +248,11 @@ it, and confirming the reconciler recovers all leases.
 - **SC-005**: No free-text message, in any tested phrasing (including ones that look like
   "yes, approved" or "go ahead"), is ever interpreted as an approval — only the bound inline
   button is.
+- **SC-006**: An eval task run end to end from Telegram ends as a draft PR on an `agent/*`
+  branch with spec, findings, and evidence attached; the default branch is never pushed to, and
+  no merge occurs without the bound approval and its second confirmation.
+- **SC-007**: After a retention pass, no artifact older than its retention window remains on
+  disk, and no successful-run workspace survives its task's completion.
 
 ## Assumptions
 

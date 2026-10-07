@@ -48,9 +48,37 @@ or tasks breakdown yet (`/speckit-plan` / `/speckit-tasks` not yet run for any f
   history that only exists once 001-008 have been running for a while, and governs the
   highest-stakes lever (auto-merge) last, per the constitution's Governance section.
 
+## Open decision (blocks `/speckit-plan`)
+
+- **Orchestrator hosting** — `launchd` host process under a dedicated `foreman` macOS user, or a
+  persistent container with the Docker socket. Recorded as TODO(ORCHESTRATOR_HOSTING) in the
+  constitution. Whichever wins, foreman MUST NOT use the default Colima profile's socket from a
+  separate user: that profile mounts `/Users/dpcamargo` read-write into its VM (verified
+  2026-10-07), which would hand foreman write access to the operator's home.
+
+## Prerequisites (ARCHITECTURE.md §18)
+
+| Item | Status |
+|---|---|
+| Rotate the `gho_` token in `~/.hermes/config.yaml` | Done by operator; verified no inline token remains — config references `${GITHUB_PERSONAL_ACCESS_TOKEN}` from `.env` |
+| Pin `npx` MCP servers | Done: `@playwright/mcp@0.0.83` (latest, past 7-day cooldown), `@modelcontextprotocol/server-github@2025.4.8`. The GitHub package is **deprecated upstream**; migrating to GitHub's official MCP server is recommended (tool names change, so it needs a decision) |
+| Move Hermes off Anthropic OAuth | Not doing (operator decision). Claude runs go through Hermes, operator-triggered only. Check the account's usage page after the first eval smoke stage for extra-usage billing |
+| Create the `foreman` macOS user | Not created (operator decision: no automatic run). Manual step, depends on the hosting decision |
+| Raise container VM resources | Done: Colima default profile 2 CPU / 2 GiB → 4 CPU / 6 GiB, verified from inside a container |
+
+## Carry-overs for `/speckit-plan` (implementation choices moved out of specs)
+
+- 004/005 local models: an in-process inference runtime (ONNX Runtime is the leading candidate;
+  Go bindings, CPU on Apple Silicon); a prompt-injection classifier in the Prompt Guard size
+  class (22M–86M params); a small sentence-embedding model (22M–100M params).
+- 005 vector index: `sqlite-vec` inside the existing SQLite file, only if BM25 recall is
+  measured short.
+- 001/002 grader and verifier: image choice per language (Go/Node), dependency-cache strategy,
+  exact `docker run` hardening flags.
+- 002 Claude runner: exact Hermes invocation for a confined, MCP-free implementer profile.
+
 ## Next steps
 
-Run `/speckit-clarify` against `001-evaluation-harness` and `002-durable-execution-loop` if any
-open questions need resolving, then `/speckit-plan` for `001-evaluation-harness` first — per
-the ordering above, no other feature's plan should start before 001's plan exists and 002's
-go/no-go has run.
+1. Decide orchestrator hosting (above).
+2. Run `/speckit-clarify` on `001-evaluation-harness`, then `/speckit-plan` for 001 — no other
+   feature's plan should start before 001's plan exists and 002's go/no-go has run.
