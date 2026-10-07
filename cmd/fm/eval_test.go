@@ -134,3 +134,31 @@ func TestParseSince(t *testing.T) {
 		}
 	}
 }
+
+func TestDecideFlagValidation(t *testing.T) {
+	t.Setenv("FOREMAN_HOME", t.TempDir())
+	for _, args := range [][]string{
+		{"eval", "decide", "--arms", "a1"},                              // no budget
+		{"eval", "decide", "--budget-tokens", "100"},                    // no arms
+		{"eval", "decide", "--arms", "a1,a1", "--budget-tokens", "100"}, // duplicate arm
+		{"eval", "decide", "--arms", "zz", "--budget-tokens", "100"},    // unknown arm
+	} {
+		if code, _, stderr := runCLI(t, args...); code != exitUsage {
+			t.Errorf("%v: exit %d, want %d (%s)", args, code, exitUsage, stderr)
+		}
+	}
+	if code, _, _ := runCLI(t, "eval", "report"); code != exitUsage {
+		t.Error("report without an id must be a usage error")
+	}
+	if code, _, _ := runCLI(t, "eval", "report", "rpt_nope"); code != exitUsage {
+		t.Error("unknown report id must be exit 2")
+	}
+}
+
+func TestListFooterCountsSinceLastSpot(t *testing.T) {
+	t.Setenv("FOREMAN_HOME", t.TempDir())
+	_, stdout, _ := runCLI(t, "eval", "list")
+	if !strings.Contains(stdout, "0 replayable records since the last spot check") {
+		t.Errorf("list footer missing: %q", stdout)
+	}
+}

@@ -67,15 +67,10 @@ func (p Replayer) ReplayOnce(ctx context.Context, req ReplayRequest) (ReplayResu
 	if err != nil {
 		return ReplayResult{}, fmt.Errorf("hidden files of %s: %w", rec.ID, err)
 	}
-	version, err := req.Arm.Version(ctx)
+	key, err := p.Key(ctx, req)
 	if err != nil {
-		return ReplayResult{}, fmt.Errorf("version of arm %s: %w", name, err)
+		return ReplayResult{}, err
 	}
-	armVersion := version + "/" + promptHash(p.PromptTemplate)
-	if req.NoCacheNonce != "" {
-		armVersion += "/nocache-" + req.NoCacheNonce
-	}
-	key := RunKey{RecordID: rec.ID, Arm: name, ArmVersion: armVersion, Rep: req.Rep, Base: rec.BaseCommit}
 
 	run, reused, err := p.Runs.StartRun(ctx, key, p.PID)
 	if err != nil {

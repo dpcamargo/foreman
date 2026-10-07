@@ -119,6 +119,7 @@ Feature 002 reuses this table for task, node and run events.
 | budget_tokens, budget_usd | INTEGER, REAL | operator-set limits (decision mode) |
 | projected_tokens, projected_usd | INTEGER, REAL | from the smoke pass |
 | spent_tokens, spent_usd, spent_wall_s | INTEGER, REAL, INTEGER | what this report's runs consumed; cached runs count 0 |
+| spent_runs, cache_hits | INTEGER NOT NULL DEFAULT 0 | runs that actually ran / answered by the cache (migration `0002_report_counts.sql`) |
 | usage_checked | INTEGER NOT NULL DEFAULT 0 | research R13 |
 | parent_id | TEXT FK → reports | a decision report points at its smoke report |
 | created_at | TEXT NOT NULL | |

@@ -259,7 +259,11 @@ session export.
 - **Wall-clock**: a `context.WithTimeout` per run kills the process group. Hermes also gets
   `--run-budget` / `--max-runtime` so it can wrap up first.
 - **Tokens**:
-  - A0 is stopped as soon as its stream reports usage over the cap.
+  - A0's `stream-json` output carries token totals only in its final `result` event, so
+    A0 is stopped by polling the session's usage every 10 s, the same way as A2. Usage comes
+    from `hermes sessions export - --cwd <ws> --after <start>`: every run has its own
+    workspace path, so the cwd filter isolates exactly that run's sessions (A2's worker
+    included).
   - A2 has no stream. On every 10-second poll, fm reads the worker session's usage
     (`kanban runs <card> --json` gives the session id, then `sessions export`) and reclaims and
     archives the card once usage is over the cap. It can overshoot by at most one poll interval.
@@ -290,6 +294,14 @@ that only holds at about 40 tasks × 3.
 
 **Alternatives considered**: a fixed threshold from Appendix D. Rejected: it's wrong at the
 sizes this feature will actually run.
+
+**Caveat found in the first real decision replay** (2026-10-07, `a1` against `a1#2`, n=3, k=3):
+success came out identical and indistinguishable, as SC-004 requires. Tokens per run came out
+"different", though (+4,237, CI +79..+7,415). The cause is run order, not the arm: `a1`'s rep-1
+runs ran first, against a cold prompt cache, so more of their input was billable; `a1#2` ran
+later against warm caches. Token and cost comparisons are therefore biased by which arm runs
+first. If that ever decides anything, interleave arms per record or compare cache-inclusive
+input tokens. Success comparisons aren't affected.
 
 ## R10. Rescues and the go/no-go criteria
 

@@ -46,6 +46,12 @@ func runEval(args []string, stdout, stderr io.Writer) int {
 		return cmdList(ctx, args[1:], stdout, stderr)
 	case "replay":
 		return cmdReplay(ctx, args[1:], stdout, stderr)
+	case "spot":
+		return cmdSpot(ctx, args[1:], stdout, stderr)
+	case "decide":
+		return cmdDecide(ctx, args[1:], stdout, stderr)
+	case "report":
+		return cmdReport(ctx, args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "fm eval: unknown eval subcommand %q\n\n", args[0])
 		evalUsage(stderr)
@@ -61,6 +67,9 @@ subcommands:
   validate   check whether records can be replayed
   list       list task records
   replay     replay one record through a baseline arm
+  spot       spot check: recent records once through one arm (a trend, not a decision)
+  decide     decision replay: seeded sample, smoke pass, budget check, k repetitions
+  report     re-render a stored report
   help       show this help
 
 Run "fm eval <subcommand> -h" for flags.
@@ -426,6 +435,9 @@ func cmdList(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	fmt.Fprintf(stdout, "%d records, %d replayable\n", len(records), replayableCount)
+	if since, err := a.evaluator(eval.Replayer{Records: a.store, Runs: a.store}).RecordsSinceLastSpot(ctx); err == nil {
+		fmt.Fprintf(stdout, "%d replayable records since the last spot check\n", since)
+	}
 	return exitOK
 }
 
@@ -735,4 +747,192 @@ func printReplayJSON(w io.Writer, results []eval.ReplayResult, t spendTotal) {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	enc.Encode(map[string]any{"runs": rows, "spend": t})
+}
+
+// --- fm eval spot / decide / report (US3) ---
+
+func (a *app) evaluator(r eval.Replayer) eval.Evaluator {
+	return eval.Evaluator{Replayer: r, Reports: a.store}
+}
+
+// writeReport stores the rendered report under state/reports and prints it.
+func (a *app) writeReport(stdout, stderr io.Writer, v eval.ReportView, asJSON bool) error {
+	dir := filepath.Join(a.env.State, "reports")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	js, err := v.JSON()
+	if err != nil {
+		return err
+	}
+	md := v.Markdown()
+	if err := os.WriteFile(filepath.Join(dir, v.Report.ID+".json"), js, 0o600); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, v.Report.ID+".md"), []byte(md), 0o600); err != nil {
+		return err
+	}
+	if asJSON {
+		stdout.Write(append(js, '\n'))
+	} else {
+		fmt.Fprint(stdout, md)
+	}
+	fmt.Fprintf(stderr, "report: %s.{md,json}\n", filepath.Join(dir, v.Report.ID))
+	return nil
+}
+
+func cmdSpot(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("fm eval spot", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	armName := fs.String("arm", "a1", "arm instance")
+	records := fs.String("records", "", "comma-separated record ids (default: replayable records since the last spot check)")
+	limit := fs.Int("limit", 5, "at most this many records, newest first")
+	maxTokens := fs.Int64("max-tokens", defaultTokenCap, "token cap per run (billable tokens)")
+	asJSON := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+	a, err := openApp(ctx)
+	if err != nil {
+		fmt.Fprintf(stderr, "fm eval spot: %v\n", err)
+		return exitInfra
+	}
+	defer a.close()
+	arm, err := a.arm(ctx, *armName)
+	if err != nil {
+		fmt.Fprintf(stderr, "fm eval spot: %v\n", err)
+		return exitFor(err)
+	}
+	replayer, err := a.replayer(ctx, *maxTokens)
+	if err != nil {
+		fmt.Fprintf(stderr, "fm eval spot: %v\n", err)
+		return exitInfra
+	}
+	e := a.evaluator(replayer)
+	var ids []string
+	if *records != "" {
+		ids = strings.Split(*records, ",")
+	}
+	rep, rows, err := e.Spot(ctx, eval.SpotRequest{Arm: arm, ArmName: *armName, RecordIDs: ids, Limit: *limit})
+	if err != nil {
+		fmt.Fprintf(stderr, "fm eval spot: %v\n", err)
+		return exitFor(err)
+	}
+	if len(rows) == 0 {
+		fmt.Fprintln(stdout, "no replayable records since the last spot check")
+	}
+	since, _ := e.RecordsSinceLastSpot(ctx)
+	sample := make([]eval.Record, 0, len(rows))
+	for _, r := range rows {
+		sample = append(sample, r.Record)
+	}
+	if err := a.writeReport(stdout, stderr, eval.BuildView(rep, rows, sample, since), *asJSON); err != nil {
+		fmt.Fprintf(stderr, "fm eval spot: %v\n", err)
+		return exitInfra
+	}
+	return exitOK
+}
+
+func cmdDecide(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("fm eval decide", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	armsFlag := fs.String("arms", "", "comma-separated arm instances, e.g. a0,a1,a2 (required)")
+	n := fs.Int("n", 15, "records to sample")
+	k := fs.Int("k", 3, "repetitions per record and arm")
+	seed := fs.Int64("seed", 0, "sampling and bootstrap seed (default: random, and recorded)")
+	budgetTokens := fs.Int64("budget-tokens", 0, "refuse if the projected spend exceeds this many billable tokens (required)")
+	budgetUSD := fs.Float64("budget-usd", 0, "refuse if the projected dollars exceed this (0 = no dollar budget)")
+	usageChecked := fs.Bool("usage-checked", false, "I checked the Anthropic usage page after the smoke pass")
+	maxTokens := fs.Int64("max-tokens", defaultTokenCap, "token cap per run (billable tokens)")
+	asJSON := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil {
+		return exitUsage
+	}
+	if *armsFlag == "" || *budgetTokens <= 0 || *n < 1 || *k < 1 {
+		fmt.Fprintln(stderr, "fm eval decide: --arms and a positive --budget-tokens are required; --n and --k must be positive")
+		return exitUsage
+	}
+	if *seed == 0 {
+		*seed = time.Now().UnixNano() % 1_000_000_000
+	}
+	a, err := openApp(ctx)
+	if err != nil {
+		fmt.Fprintf(stderr, "fm eval decide: %v\n", err)
+		return exitInfra
+	}
+	defer a.close()
+	order := strings.Split(*armsFlag, ",")
+	arms := map[string]eval.Arm{}
+	for _, name := range order {
+		if _, dup := arms[name]; dup {
+			fmt.Fprintf(stderr, "fm eval decide: arm %s listed twice; use an instance suffix (e.g. %s#2)\n", name, name)
+			return exitUsage
+		}
+		arm, err := a.arm(ctx, name)
+		if err != nil {
+			fmt.Fprintf(stderr, "fm eval decide: %v\n", err)
+			return exitFor(err)
+		}
+		arms[name] = arm
+	}
+	replayer, err := a.replayer(ctx, *maxTokens)
+	if err != nil {
+		fmt.Fprintf(stderr, "fm eval decide: %v\n", err)
+		return exitInfra
+	}
+	e := a.evaluator(replayer)
+	req := eval.DecideRequest{Arms: arms, ArmOrder: order, N: *n, K: *k, Seed: *seed,
+		BudgetTokens: *budgetTokens, UsageChecked: *usageChecked}
+	if *budgetUSD > 0 {
+		req.BudgetUSD = budgetUSD
+	}
+	fmt.Fprintf(stderr, "decision replay: seed %d, %d records × %d arm(s) × k=%d\n", *seed, *n, len(order), *k)
+	res, err := e.Decide(ctx, req)
+	if res.Smoke.ID != "" && (err != nil || res.Decision == nil) {
+		fmt.Fprintf(stderr, "smoke pass: %s (%d tokens over %d run(s), %d cache hit(s))\n",
+			res.Smoke.ID, res.Smoke.Spent.Tokens, res.Smoke.Spent.Runs, res.Smoke.Spent.CacheHits)
+	}
+	switch {
+	case errors.Is(err, eval.ErrNotEnoughRecords), errors.Is(err, eval.ErrUsageCheckNeeded), errors.Is(err, eval.ErrOverBudget):
+		fmt.Fprintf(stderr, "fm eval decide: %v\n", err)
+		return exitNegative
+	case errors.Is(err, eval.ErrSmokeNotClean):
+		fmt.Fprintf(stderr, "fm eval decide: %v\n", err)
+		return exitInfra
+	case err != nil:
+		fmt.Fprintf(stderr, "fm eval decide: %v\n", err)
+		return exitFor(err)
+	}
+	since, _ := e.RecordsSinceLastSpot(ctx)
+	if err := a.writeReport(stdout, stderr, eval.BuildView(*res.Decision, res.Rows, res.Sample, since), *asJSON); err != nil {
+		fmt.Fprintf(stderr, "fm eval decide: %v\n", err)
+		return exitInfra
+	}
+	return exitOK
+}
+
+func cmdReport(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("fm eval report", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	asJSON := fs.Bool("json", false, "print JSON")
+	if err := fs.Parse(args); err != nil || fs.NArg() != 1 {
+		fmt.Fprintln(stderr, "usage: fm eval report <rpt-id> [--json]")
+		return exitUsage
+	}
+	a, err := openApp(ctx)
+	if err != nil {
+		fmt.Fprintf(stderr, "fm eval report: %v\n", err)
+		return exitInfra
+	}
+	defer a.close()
+	v, err := a.evaluator(eval.Replayer{Records: a.store, Runs: a.store}).View(ctx, fs.Arg(0))
+	if err != nil {
+		fmt.Fprintf(stderr, "fm eval report: %v\n", err)
+		return exitFor(err)
+	}
+	if err := a.writeReport(stdout, stderr, v, *asJSON); err != nil {
+		fmt.Fprintf(stderr, "fm eval report: %v\n", err)
+		return exitInfra
+	}
+	return exitOK
 }

@@ -338,8 +338,8 @@ func TestMigrationsAreIdempotent(t *testing.T) {
 		if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM schema_migrations`).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
-		if n != 1 {
-			t.Errorf("open #%d: schema_migrations has %d rows, want 1", i+1, n)
+		if n != 2 {
+			t.Errorf("open #%d: schema_migrations has %d rows, want 2", i+1, n)
 		}
 		s.Close()
 	}
@@ -504,5 +504,104 @@ func TestSweepLostRuns(t *testing.T) {
 	s.db.QueryRowContext(ctx, `SELECT count(*) FROM events WHERE entity_id = ? AND to_status = 'infra_error'`, lost.ID).Scan(&events)
 	if events != 1 {
 		t.Errorf("sweep events = %d, want 1", events)
+	}
+}
+
+// --- reports (US3) ---
+
+func TestFindRunAndRun(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t)
+	key := runKey(t, s)
+	if r, err := s.FindRun(ctx, key); err != nil || r != nil {
+		t.Errorf("FindRun before StartRun = %v, %v", r, err)
+	}
+	run, _, _ := s.StartRun(ctx, key, eval.PIDFingerprint{PID: 1})
+	s.FinishRun(ctx, finished(run, eval.StatusSucceeded), &eval.Grade{RunID: run.ID, Success: true})
+	got, err := s.FindRun(ctx, key)
+	if err != nil || got == nil || got.ID != run.ID || got.Status != eval.StatusSucceeded {
+		t.Errorf("FindRun = %+v, %v", got, err)
+	}
+	byID, err := s.Run(ctx, run.ID)
+	if err != nil || byID.Key != key {
+		t.Errorf("Run = %+v, %v", byID, err)
+	}
+	if _, err := s.Run(ctx, "run_nope"); !errors.Is(err, eval.ErrNotFound) {
+		t.Errorf("Run(unknown) err = %v", err)
+	}
+}
+
+func TestReports(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t)
+	key := runKey(t, s)
+	run, _, _ := s.StartRun(ctx, key, eval.PIDFingerprint{PID: 1})
+	s.FinishRun(ctx, finished(run, eval.StatusSucceeded), &eval.Grade{RunID: run.ID})
+	clock := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+	s.now = func() time.Time { clock = clock.Add(time.Minute); return clock }
+
+	tokens, usd := int64(5000), 1.5
+	in := eval.Report{
+		Mode: eval.ModeSmoke, Seed: 7, Arms: []string{"a1", "a1#2"}, K: 1, Sample: []string{key.RecordID},
+		BudgetTokens: &tokens, ProjectedUSD: &usd, Spent: eval.Spend{Tokens: 150, Runs: 1, CacheHits: 2, Wall: 90 * time.Second, WallS: 90},
+		RunIDs: []string{run.ID},
+	}
+	smoke, err := s.SaveReport(ctx, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !regexp.MustCompile(`^rpt_\d{14}_[0-9a-f]{8}$`).MatchString(smoke.ID) || smoke.CreatedAt.IsZero() {
+		t.Errorf("saved report = %+v", smoke)
+	}
+	got, err := s.Report(ctx, smoke.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in.ID, in.CreatedAt = smoke.ID, smoke.CreatedAt
+	if !reflect.DeepEqual(got, in) {
+		t.Errorf("report round trip\n got %+v\nwant %+v", got, in)
+	}
+
+	found, err := s.FindReport(ctx, eval.ModeSmoke, 7, []string{"a1", "a1#2"}, []string{key.RecordID})
+	if err != nil || found == nil || found.ID != smoke.ID {
+		t.Errorf("FindReport = %+v, %v", found, err)
+	}
+	if other, _ := s.FindReport(ctx, eval.ModeSmoke, 8, []string{"a1", "a1#2"}, []string{key.RecordID}); other != nil {
+		t.Error("FindReport matched a different seed")
+	}
+	if err := s.SetUsageChecked(ctx, smoke.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := s.Report(ctx, smoke.ID); !got.UsageChecked {
+		t.Error("usage_checked not stored")
+	}
+
+	if last, err := s.LastSpotCheck(ctx); err != nil || last != nil {
+		t.Errorf("LastSpotCheck with no spot = %+v, %v", last, err)
+	}
+	s.SaveReport(ctx, eval.Report{Mode: eval.ModeSpot, Arms: []string{"a1"}, K: 1})
+	spot2, _ := s.SaveReport(ctx, eval.Report{Mode: eval.ModeSpot, Arms: []string{"a1"}, K: 1})
+	if last, err := s.LastSpotCheck(ctx); err != nil || last == nil || last.ID != spot2.ID {
+		t.Errorf("LastSpotCheck = %+v, %v; want %s", last, err, spot2.ID)
+	}
+
+	var events int
+	s.db.QueryRowContext(ctx, `SELECT count(*) FROM events WHERE entity = 'report'`).Scan(&events)
+	if events != 4 { // 3 created + 1 usage_checked
+		t.Errorf("report events = %d, want 4", events)
+	}
+}
+
+func TestSaveReportIsAtomic(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t)
+	s.db.ExecContext(ctx, `DROP TABLE events`)
+	if _, err := s.SaveReport(ctx, eval.Report{Mode: eval.ModeSpot, Arms: []string{"a1"}, K: 1}); err == nil {
+		t.Fatal("SaveReport succeeded without an events table")
+	}
+	var n int
+	s.db.QueryRowContext(ctx, `SELECT count(*) FROM reports`).Scan(&n)
+	if n != 0 {
+		t.Errorf("reports = %d after a failed save", n)
 	}
 }

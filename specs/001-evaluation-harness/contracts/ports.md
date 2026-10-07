@@ -5,7 +5,10 @@ The interfaces the eval use cases need, declared in the core package that uses t
 methods take `context.Context` first.
 
 ```go
-// RecordStore persists records, runs, grades and reports. Adapter: internal/adapters/sqlite.
+// The store is split into three small interfaces (AGENTS.md rule 2); the sqlite adapter
+// implements all of them.
+
+// RecordStore persists records. Adapter: internal/adapters/sqlite.
 type RecordStore interface {
     AddRecord(ctx context.Context, r Record, files RecordFiles) (Record, error)
     Record(ctx context.Context, id string) (Record, error)
@@ -14,14 +17,27 @@ type RecordStore interface {
     // SetReplayable stores a validation verdict (replayable, reason, base full-suite result).
     SetReplayable(ctx context.Context, id string, v Validation) error
 
+}
+
+// RunStore persists replay runs and grades.
+type RunStore interface {
     // StartRun returns the existing run when the cache key already has a finished one
     // (reused=true). Otherwise it inserts a running row with the caller's PID fingerprint.
     StartRun(ctx context.Context, key RunKey, pid PIDFingerprint) (run ReplayRun, reused bool, err error)
     FinishRun(ctx context.Context, run ReplayRun, g *Grade) error // one transaction
-    SweepLostRuns(ctx context.Context, alive func(PIDFingerprint) bool) (int, error)
+    // SweepLostRuns returns the ids it marked lost, so the caller can remove their workspaces.
+    SweepLostRuns(ctx context.Context, alive func(PIDFingerprint) bool) ([]string, error)
+    RunGrade(ctx context.Context, runID string) (*Grade, error)
+    FindRun(ctx context.Context, key RunKey) (*ReplayRun, error) // nil when none
+    Run(ctx context.Context, id string) (ReplayRun, error)
+}
 
-    SaveReport(ctx context.Context, rep Report) error
+// ReportStore persists reports.
+type ReportStore interface {
+    SaveReport(ctx context.Context, r Report) (Report, error) // assigns id; links runs; one tx with its event
     Report(ctx context.Context, id string) (Report, error)
+    FindReport(ctx context.Context, mode ReportMode, seed int64, arms, sample []string) (*Report, error)
+    SetUsageChecked(ctx context.Context, id string) error
     LastSpotCheck(ctx context.Context) (*Report, error)
 }
 

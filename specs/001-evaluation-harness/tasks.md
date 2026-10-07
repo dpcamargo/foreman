@@ -318,13 +318,13 @@ Depends on US2 (replays).
 
 ### Tests (write first, must fail)
 
-- [ ] T057 [P] [US3] Write `internal/core/eval/sample_test.go`:
+- [X] T057 [P] [US3] Write `internal/core/eval/sample_test.go`:
   - a seeded draw is deterministic and in a stable order;
   - the pool ignores live outcome (failed, blocked and rescued records are drawn);
   - n greater than the pool size is an error;
   - the repository and category mix is counted;
   - `single_repo_majority` is true when one repository is more than half the sample (FR-012).
-- [ ] T058 [P] [US3] Write `internal/core/eval/stats_test.go`:
+- [X] T058 [P] [US3] Write `internal/core/eval/stats_test.go`:
   - each metric's formula, on a hand-computed table (contracts/report.md, "Metrics");
   - pass^k counts only records where all reps succeeded;
   - `infra_error` is excluded from denominators;
@@ -334,29 +334,29 @@ Depends on US2 (replays).
   - a 10-out-of-10 versus 0-out-of-10 pair gives an interval excluding 0;
   - best-baseline selection breaks ties on cost per verified success;
   - the threshold table is computed for non-baseline arms only, with the rescue row "not measurable by replay".
-- [ ] T059 [P] [US3] Write `internal/core/eval/report_test.go`:
+- [X] T059 [P] [US3] Write `internal/core/eval/report_test.go` (implemented with structural assertions on the JSON keys and markdown section order instead of golden files, which would only freeze the first rendering):
   - JSON output matches the shape in contracts/report.md (golden file `testdata/report/decision.json`);
   - markdown has the sections in order, with the "TREND ONLY" or "SMOKE" banner by mode;
   - contaminated runs are listed;
   - the footer shows the records-since-last-spot count (golden file `testdata/report/decision.md`).
-- [ ] T060 [P] [US3] Write `internal/core/eval/decide_test.go`, which tests `Decide` and `Spot` with fakes:
+- [X] T060 [P] [US3] Write `internal/core/eval/decide_test.go`, which tests `Decide` and `Spot` with fakes:
   - the smoke pass runs k=1 on the first 3 sampled records for every arm;
   - an infrastructure error in the smoke pass stops the run with exit-class infra;
   - a Claude arm without usage-checked stops after the smoke pass, and re-running with it set reuses the cached smoke runs (no arm calls);
   - the projection uses only non-cached smoke runs, and a projection over budget is refused before any decision run;
   - an interrupted decide, run again, only executes the missing runs;
   - spot uses k=1 on records since the last spot check, newest first, up to the limit.
-- [ ] T061 [P] [US3] Add the report-method tests to `internal/adapters/sqlite/store_test.go`: `SaveReport` with its `report_runs` links and its `events` row in the same transaction, `Report` round-trip, and `LastSpotCheck` returning the newest `spot` report.
+- [X] T061 [P] [US3] Add the report-method tests to `internal/adapters/sqlite/store_test.go`: `SaveReport` with its `report_runs` links and its `events` row in the same transaction, `Report` round-trip, and `LastSpotCheck` returning the newest `spot` report.
 
 ### Implementation
 
-- [ ] T062 [US3] Implement `internal/core/eval/sample.go` to pass T057, using `math/rand/v2` with a PCG source seeded from the report seed.
-- [ ] T063 [US3] Implement `internal/core/eval/stats.go` to pass T058 (metrics, paired bootstrap with 10,000 resamples, best baseline, thresholds per contracts/report.md).
-- [ ] T064 [US3] Implement `internal/core/eval/report.go` to pass T059 (a `Report` type plus pure `JSON()` and `Markdown()` renderers). Add the report methods of `RecordStore` to `ports.go`.
-- [ ] T065 [US3] Implement the report methods in `internal/adapters/sqlite/store.go` to pass T061. Add the "replayable records since last spot check" footer to `fm eval list` in `cmd/fm/eval.go` (FR-017).
-- [ ] T066 [US3] Implement `Decide` and `Spot` in `internal/core/eval/decide.go` to pass T060, following contracts/report.md, "Decision replay" and "Spot check".
-- [ ] T067 [US3] Implement `fm eval spot`, `fm eval decide` (with `--budget-tokens` required and `--usage-checked`) and `fm eval report <id>` in `cmd/fm/eval.go`, writing `state/reports/<id>.md` and `.json`. Arm instance suffixes (`a1#2`) map to the base arm's adapter, under the instance name.
-- [ ] T068 [US3] Run quickstart step 6 for real (fixtures, spot, `decide --arms 'a1,a1#2'`, then `decide --arms a0,a1` up to the usage gate). Check the Anthropic usage page after the first smoke pass with A0, then re-run with `--usage-checked`.
+- [X] T062 [US3] Implement `internal/core/eval/sample.go` to pass T057, using `math/rand/v2` with a PCG source seeded from the report seed.
+- [X] T063 [US3] Implement `internal/core/eval/stats.go` to pass T058 (metrics, paired bootstrap with 10,000 resamples, best baseline, thresholds per contracts/report.md).
+- [X] T064 [US3] Implement `internal/core/eval/report.go` to pass T059 (a `Report` type plus pure `JSON()` and `Markdown()` renderers). Add the report methods of `RecordStore` to `ports.go`.
+- [X] T065 [US3] Implement the report methods in `internal/adapters/sqlite/store.go` to pass T061. Add the "replayable records since last spot check" footer to `fm eval list` in `cmd/fm/eval.go` (FR-017).
+- [X] T066 [US3] Implement `Decide` and `Spot` in `internal/core/eval/decide.go` to pass T060, following contracts/report.md, "Decision replay" and "Spot check".
+- [X] T067 [US3] Implement `fm eval spot`, `fm eval decide` (with `--budget-tokens` required and `--usage-checked`) and `fm eval report <id>` in `cmd/fm/eval.go`, writing `state/reports/<id>.md` and `.json`. Arm instance suffixes (`a1#2`) map to the base arm's adapter, under the instance name.
+- [ ] T068 [US3] (Done for Codex on 2026-10-07: spot check, then `decide --arms 'a1,a1#2' --n 3 --k 3 --seed 7` gave success indistinguishable, report rpt_20261007191616_54764a56. Still open: the `a0` usage-gate run, which needs the foreman-arm profile.) Run quickstart step 6 for real (fixtures, spot, `decide --arms 'a1,a1#2'`, then `decide --arms a0,a1` up to the usage gate). Check the Anthropic usage page after the first smoke pass with A0, then re-run with `--usage-checked`.
 
 **Checkpoint**: all three stories work. foreman can now be measured against the baselines as
 soon as Feature 002 starts producing records.
@@ -365,9 +365,9 @@ soon as Feature 002 starts producing records.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T069 [P] Run the secret-redaction check over every artifact written during T029, T050, T056 and T068: grep `$FOREMAN_HOME/state/runs/` and `$FOREMAN_HOME/state/reports/` for configured secret values and the token patterns from research R5 (the same list as `internal/core/eval/redact.go`). Fix any leaks found in the writers (`internal/adapters/artifacts/`, `internal/adapters/container/grader.go`). (This anticipates spec 002's FR-017; it's cheap to verify now.)
-- [ ] T070 [P] Update `specs/ROADMAP.md`: 001 status set to "implemented", with the actual grader image digest and the T-codex-deny result and date under "Carry-overs".
-- [ ] T071 Do a final pass of every quickstart step from a clean `FOREMAN_HOME` (`FOREMAN_HOME=$(mktemp -d)`), then `gofmt -l .`, `go vet ./...`, `go test ./...` and `go test -tags container ./...`. Measure the per-replay overhead (clone + export + grade, excluding the arm) on a warm cache against plan.md's 60 s goal. Record the outcome in the PR description.
+- [X] T069 [P] Run the secret-redaction check over every artifact written during T029, T050, T056 and T068: grep `$FOREMAN_HOME/state/runs/` and `$FOREMAN_HOME/state/reports/` for configured secret values and the token patterns from research R5 (the same list as `internal/core/eval/redact.go`). Fix any leaks found in the writers (`internal/adapters/artifacts/`, `internal/adapters/container/grader.go`). (This anticipates spec 002's FR-017; it's cheap to verify now.)
+- [X] T070 [P] Update `specs/ROADMAP.md`: 001 status set to "implemented", with the actual grader image digest and the T-codex-deny result and date under "Carry-overs".
+- [ ] T071 (Partly done 2026-10-07: gofmt, vet, `go test ./...` and `-tags container` pass; the overhead per grading with a full suite is 18.4 s against the 60 s goal; quickstart steps 1–3 and 5–7 pass for Codex. Still open: steps 0 and 4 for Hermes, from a clean FOREMAN_HOME.) Do a final pass of every quickstart step from a clean `FOREMAN_HOME` (`FOREMAN_HOME=$(mktemp -d)`), then `gofmt -l .`, `go vet ./...`, `go test ./...` and `go test -tags container ./...`. Measure the per-replay overhead (clone + export + grade, excluding the arm) on a warm cache against plan.md's 60 s goal. Record the outcome in the PR description.
 
 ---
 

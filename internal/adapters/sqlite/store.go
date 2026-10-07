@@ -717,3 +717,168 @@ func scanRun(sc scanner) (eval.ReplayRun, error) {
 	}
 	return r, nil
 }
+
+// --- run lookups and reports (US3) ---
+
+// FindRun implements eval.RunStore.
+func (s *Store) FindRun(ctx context.Context, key eval.RunKey) (*eval.ReplayRun, error) {
+	r, err := scanRun(s.db.QueryRowContext(ctx, `SELECT `+runColumns+` FROM replay_runs
+		WHERE record_id = ? AND arm = ? AND arm_version = ? AND rep = ? AND base_commit = ?`,
+		key.RecordID, key.Arm, key.ArmVersion, key.Rep, key.Base))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find run: %w", err)
+	}
+	return &r, nil
+}
+
+// Run implements eval.RunStore.
+func (s *Store) Run(ctx context.Context, id string) (eval.ReplayRun, error) {
+	r, err := scanRun(s.db.QueryRowContext(ctx, `SELECT `+runColumns+` FROM replay_runs WHERE id = ?`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return eval.ReplayRun{}, fmt.Errorf("run %s: %w", id, eval.ErrNotFound)
+	}
+	return r, err
+}
+
+const reportColumns = `id, mode, seed, arms, k, sample, budget_tokens, budget_usd, projected_tokens, projected_usd,
+	spent_tokens, spent_usd, spent_wall_s, spent_runs, cache_hits, usage_checked, coalesce(parent_id, ''), created_at`
+
+// SaveReport implements eval.ReportStore.
+func (s *Store) SaveReport(ctx context.Context, r eval.Report) (eval.Report, error) {
+	at := s.clock()
+	id, err := s.newID("rpt", at)
+	if err != nil {
+		return eval.Report{}, err
+	}
+	r.ID, r.CreatedAt = id, at
+	arms, _ := json.Marshal(nonNilStrings(r.Arms))
+	sample, _ := json.Marshal(nonNilStrings(r.Sample))
+	err = s.withTx(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO reports (`+strings.ReplaceAll(reportColumns, "coalesce(parent_id, '')", "parent_id")+`)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			r.ID, string(r.Mode), r.Seed, string(arms), r.K, string(sample), r.BudgetTokens, r.BudgetUSD,
+			r.ProjectedTokens, r.ProjectedUSD, r.Spent.Tokens, r.Spent.USD, r.Spent.Wall.Seconds(),
+			r.Spent.Runs, r.Spent.CacheHits, boolInt(r.UsageChecked), nullString(r.ParentID), at.Format(tsLayout)); err != nil {
+			return fmt.Errorf("insert report: %w", err)
+		}
+		for _, runID := range r.RunIDs {
+			if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO report_runs (report_id, run_id) VALUES (?, ?)`, r.ID, runID); err != nil {
+				return fmt.Errorf("link run %s: %w", runID, err)
+			}
+		}
+		return s.insertEvent(ctx, tx, "report", r.ID, nil, "created", map[string]any{"mode": r.Mode, "runs": len(r.RunIDs)})
+	})
+	if err != nil {
+		return eval.Report{}, err
+	}
+	return r, nil
+}
+
+// Report implements eval.ReportStore.
+func (s *Store) Report(ctx context.Context, id string) (eval.Report, error) {
+	r, err := s.scanReport(ctx, s.db.QueryRowContext(ctx, `SELECT `+reportColumns+` FROM reports WHERE id = ?`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return eval.Report{}, fmt.Errorf("report %s: %w", id, eval.ErrNotFound)
+	}
+	return r, err
+}
+
+// FindReport implements eval.ReportStore.
+func (s *Store) FindReport(ctx context.Context, mode eval.ReportMode, seed int64, arms, sample []string) (*eval.Report, error) {
+	a, _ := json.Marshal(nonNilStrings(arms))
+	smp, _ := json.Marshal(nonNilStrings(sample))
+	r, err := s.scanReport(ctx, s.db.QueryRowContext(ctx, `SELECT `+reportColumns+` FROM reports
+		WHERE mode = ? AND seed = ? AND arms = ? AND sample = ? ORDER BY created_at DESC LIMIT 1`,
+		string(mode), seed, string(a), string(smp)))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+// SetUsageChecked implements eval.ReportStore.
+func (s *Store) SetUsageChecked(ctx context.Context, id string) error {
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `UPDATE reports SET usage_checked = 1 WHERE id = ?`, id)
+		if err != nil {
+			return fmt.Errorf("mark %s usage-checked: %w", id, err)
+		}
+		if n, _ := res.RowsAffected(); n != 1 {
+			return fmt.Errorf("report %s: %w", id, eval.ErrNotFound)
+		}
+		from := "created"
+		return s.insertEvent(ctx, tx, "report", id, &from, "usage_checked", nil)
+	})
+}
+
+// LastSpotCheck implements eval.ReportStore.
+func (s *Store) LastSpotCheck(ctx context.Context) (*eval.Report, error) {
+	r, err := s.scanReport(ctx, s.db.QueryRowContext(ctx, `SELECT `+reportColumns+` FROM reports
+		WHERE mode = 'spot' ORDER BY created_at DESC, id DESC LIMIT 1`))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+func (s *Store) scanReport(ctx context.Context, sc scanner) (eval.Report, error) {
+	var (
+		r                      eval.Report
+		mode, arms, sample, at string
+		spentUSD               *float64
+		spentTokens            *int64
+		spentWall              *float64
+		usageChecked           int64
+	)
+	if err := sc.Scan(&r.ID, &mode, &r.Seed, &arms, &r.K, &sample, &r.BudgetTokens, &r.BudgetUSD,
+		&r.ProjectedTokens, &r.ProjectedUSD, &spentTokens, &spentUSD, &spentWall, &r.Spent.Runs, &r.Spent.CacheHits,
+		&usageChecked, &r.ParentID, &at); err != nil {
+		return eval.Report{}, err
+	}
+	r.Mode, r.UsageChecked = eval.ReportMode(mode), usageChecked != 0
+	if err := json.Unmarshal([]byte(arms), &r.Arms); err != nil {
+		return eval.Report{}, fmt.Errorf("decode arms: %w", err)
+	}
+	if err := json.Unmarshal([]byte(sample), &r.Sample); err != nil {
+		return eval.Report{}, fmt.Errorf("decode sample: %w", err)
+	}
+	r.Spent.Tokens, r.Spent.USD = deref(spentTokens), spentUSD
+	if spentWall != nil {
+		r.Spent.Wall = time.Duration(*spentWall * float64(time.Second))
+		r.Spent.WallS = *spentWall
+	}
+	var err error
+	if r.CreatedAt, err = time.Parse(tsLayout, at); err != nil {
+		return eval.Report{}, fmt.Errorf("parse created_at: %w", err)
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT run_id FROM report_runs rr JOIN replay_runs r ON r.id = rr.run_id
+		WHERE rr.report_id = ? ORDER BY r.started_at, r.id`, r.ID)
+	if err != nil {
+		return eval.Report{}, fmt.Errorf("report runs: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return eval.Report{}, err
+		}
+		r.RunIDs = append(r.RunIDs, id)
+	}
+	return r, rows.Err()
+}
+
+func nonNilStrings(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}

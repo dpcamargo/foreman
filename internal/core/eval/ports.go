@@ -108,6 +108,9 @@ type RunStore interface {
 	// and returns their ids, so the caller can remove their workspaces.
 	SweepLostRuns(ctx context.Context, alive func(PIDFingerprint) bool) ([]string, error)
 	RunGrade(ctx context.Context, runID string) (*Grade, error)
+	// FindRun returns the run for key, or nil when there is none.
+	FindRun(ctx context.Context, key RunKey) (*ReplayRun, error)
+	Run(ctx context.Context, id string) (ReplayRun, error)
 }
 
 // Artifacts owns run files. Adapter: internal/adapters/artifacts. Files an arm reads
