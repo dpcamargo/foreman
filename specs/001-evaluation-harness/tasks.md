@@ -65,7 +65,7 @@ or writes records.
 
 ### Tests (write first, must fail)
 
-- [ ] T005 [P] Write `internal/core/eval/record_test.go` covering input validation for a new record. Cases:
+- [X] T005 [P] Write `internal/core/eval/record_test.go` covering input validation for a new record. Cases:
   - accept a well-formed record;
   - reject a `base_commit` that isn't 40 hex characters;
   - reject a `test_command` that isn't a non-empty argv;
@@ -74,7 +74,7 @@ or writes records.
   - reject hidden files given without a `test_command`;
   - reject any hidden or visible path that is absolute, contains `..`, or is a symlink (via an `fs.FS` fixture built with `testing/fstest`);
   - default the wall budget to 1800 s (data-model.md, "Validation rules").
-- [ ] T006 [P] Write `internal/adapters/sqlite/store_test.go` (record methods) against a real temp database:
+- [X] T006 [P] Write `internal/adapters/sqlite/store_test.go` (record methods) against a real temp database:
   - `AddRecord` assigns a `rec_<YYYYMMDDHHMMSS>_<8 hex>` id and copies the files under `state/records/<id>/{visible,hidden}`, plus `reference.patch` when given;
   - `Record`/`Records` round-trip every column;
   - the `RecordFilter` cases work (`replayable` only, by repo, created since);
@@ -84,11 +84,11 @@ or writes records.
 
 ### Implementation
 
-- [ ] T007 Implement `internal/core/eval/record.go`. Types: `Record`, `Category`, `TestFormat`, `LiveOutcome`, `RecordFiles` (`Visible`, `Hidden fs.FS`; `ReferencePatch []byte`) and `RecordFilter`. Implement `ValidateNew(r Record, f RecordFiles) error` to pass T005. No I/O beyond walking the given `fs.FS`.
-- [ ] T008 Declare the record half of the `RecordStore` port in `internal/core/eval/ports.go`: `AddRecord`, `Record`, `Records`, `SetReplayable` (contracts/ports.md). The run and report methods are added in US2 and US3.
-- [ ] T009 Write `migrations/0001_eval.sql` with tables `records`, `replay_runs`, `grades`, `reports`, `report_runs` and `events`, plus indexes and the unique cache-key constraint, exactly as specified in data-model.md.
-- [ ] T010 Implement `internal/adapters/sqlite/migrate.go`. Embed `migrations/*.sql` with `embed.FS`, apply each pending file in its own transaction, and track them in `schema_migrations`. Add `modernc.org/sqlite v1.60.1` to `go.mod` (`go get modernc.org/sqlite@v1.60.1`). Open the database with `_pragma=journal_mode(WAL)`, `_pragma=foreign_keys(1)` and `_pragma=busy_timeout(5000)`.
-- [ ] T011 Implement the record methods in `internal/adapters/sqlite/store.go` so T006 passes: id generation with `crypto/rand`, blob copying that refuses symlinks, RFC 3339 UTC timestamps, and an `events` insert inside the same transaction as each change (one unexported `withTx` helper).
+- [X] T007 Implement `internal/core/eval/record.go`. Types: `Record`, `Category`, `TestFormat`, `LiveOutcome`, `RecordFiles` (`Visible`, `Hidden fs.FS`; `ReferencePatch []byte`) and `RecordFilter`. Implement `ValidateNew(r Record, f RecordFiles) error` to pass T005. No I/O beyond walking the given `fs.FS`.
+- [X] T008 Declare the record half of the `RecordStore` port in `internal/core/eval/ports.go`: `AddRecord`, `Record`, `Records`, `SetReplayable` (contracts/ports.md). The run and report methods are added in US2 and US3.
+- [X] T009 Write `migrations/0001_eval.sql` with tables `records`, `replay_runs`, `grades`, `reports`, `report_runs` and `events`, plus indexes and the unique cache-key constraint, exactly as specified in data-model.md.
+- [X] T010 Implement `internal/adapters/sqlite/migrate.go`. Embed `migrations/*.sql` with `embed.FS`, apply each pending file in its own transaction, and track them in `schema_migrations`. Add `modernc.org/sqlite v1.60.1` to `go.mod` (`go get modernc.org/sqlite@v1.60.1`). Open the database with `_pragma=journal_mode(WAL)`, `_pragma=foreign_keys(1)` and `_pragma=busy_timeout(5000)`.
+- [X] T011 Implement the record methods in `internal/adapters/sqlite/store.go` so T006 passes: id generation with `crypto/rand`, blob copying that refuses symlinks, RFC 3339 UTC timestamps, and an `events` insert inside the same transaction as each change (one unexported `withTx` helper).
 
 **Checkpoint**: `go test ./...` passes (T003, T005, T006). `archtest` now checks real core packages.
 
