@@ -53,16 +53,35 @@ func (a *KanbanGoal) Attempt(ctx context.Context, in eval.AttemptInput) (eval.At
 	if json.Unmarshal(out, &card) != nil || card.ID == "" {
 		return eval.AttemptResult{Status: eval.StatusInfraError, Error: "kanban create returned no id: " + string(out)}, nil
 	}
-	if _, err := a.kanban(ctx, "dispatch", "--max", "1", "--json"); err != nil {
+	// The worker inherits this dispatch's environment, so it gets the run's mounts. A
+	// card spawned by another dispatcher (e.g. a gateway) would not, so that's refused.
+	out, err = a.cfg.runWith(ctx, a.cfg.runEnv(ws.Dir), "kanban", "--board", a.cfg.Board, "dispatch", "--max", "1", "--json")
+	if err != nil {
 		a.stop(card.ID)
 		return eval.AttemptResult{Status: eval.StatusInfraError, Error: err.Error()}, nil
 	}
+	var disp struct {
+		Spawned []struct {
+			TaskID string `json:"task_id"`
+		} `json:"spawned"`
+	}
+	json.Unmarshal(out, &disp)
+	spawned := false
+	for _, s := range disp.Spawned {
+		spawned = spawned || s.TaskID == card.ID
+	}
+	if !spawned {
+		a.stop(card.ID)
+		return eval.AttemptResult{Status: eval.StatusInfraError,
+			Error: "card " + card.ID + " was not spawned by this dispatch (another dispatcher may have taken it), so its workspace mount is not guaranteed"}, nil
+	}
 
-	status, summary, pollErr := a.wait(ctx, card.ID, ws.Dir, start, in)
+	usageFilter := []string{"--source", "kanban", "--title", ws.ID}
+	status, summary, pollErr := a.wait(ctx, card.ID, usageFilter, start, in)
 	if log, err := a.kanban(context.WithoutCancel(ctx), "log", card.ID); err == nil {
 		io.WriteString(in.Transcript, string(log))
 	}
-	usage, _ := a.cfg.sessionUsage(context.WithoutCancel(ctx), ws.Dir, start)
+	usage, _ := a.cfg.sessionUsage(context.WithoutCancel(ctx), usageFilter, start)
 	res := eval.AttemptResult{Status: status, Usage: usage}
 	switch {
 	case pollErr != nil:
@@ -87,7 +106,7 @@ func cardBlocked(s cardState) bool { return s.status == "blocked" }
 
 // wait polls the card until it is done or blocked, enforcing the wall and token caps by
 // reclaiming and archiving the card.
-func (a *KanbanGoal) wait(ctx context.Context, id, ws string, start time.Time, in eval.AttemptInput) (eval.RunStatus, cardState, error) {
+func (a *KanbanGoal) wait(ctx context.Context, id string, usageFilter []string, start time.Time, in eval.AttemptInput) (eval.RunStatus, cardState, error) {
 	deadline := start.Add(in.WallCap)
 	t := time.NewTicker(a.cfg.PollInterval)
 	defer t.Stop()
@@ -102,7 +121,7 @@ func (a *KanbanGoal) wait(ctx context.Context, id, ws string, start time.Time, i
 			return eval.StatusSucceeded, state, nil
 		}
 		if in.TokenCap > 0 {
-			if u, err := a.cfg.sessionUsage(ctx, ws, start); err == nil && u.Billable() > in.TokenCap {
+			if u, err := a.cfg.sessionUsage(ctx, usageFilter, start); err == nil && u.Billable() > in.TokenCap {
 				a.stop(id)
 				return eval.StatusBudgetExceeded, state, nil
 			}

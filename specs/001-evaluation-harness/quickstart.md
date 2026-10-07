@@ -29,7 +29,6 @@ HERMES_HOME=$FOREMAN_HERMES_HOME hermes config set terminal.docker_image "$FOREM
 HERMES_HOME=$FOREMAN_HERMES_HOME hermes config set terminal.docker_mount_cwd_to_workspace true
 HERMES_HOME=$FOREMAN_HERMES_HOME hermes config set terminal.docker_network false
 HERMES_HOME=$FOREMAN_HERMES_HOME hermes config set terminal.container_persistent false
-HERMES_HOME=$FOREMAN_HERMES_HOME hermes config set terminal.docker_volumes '["'$HOME'/.foreman/work/gomodcache:/go/pkg/mod:ro"]'
 HERMES_HOME=$FOREMAN_HERMES_HOME hermes mcp list             # must be empty
 HERMES_HOME=$FOREMAN_HERMES_HOME hermes kanban boards create foreman-eval
 ```

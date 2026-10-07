@@ -116,8 +116,11 @@ func TestOneshotInvocation(t *testing.T) {
 	if u.Input != 12 || u.Output != 2475 || u.Cached != 90812 || u.CacheWrite != 92553 || u.USD == nil || *u.USD != 0.2743189 || u.CostSource != "hermes-estimate" {
 		t.Errorf("usage = %+v", u)
 	}
-	if !strings.Contains(f.read("calls"), "--cwd "+f.ws) {
-		t.Error("usage was not looked up by the run's workspace")
+	if !strings.Contains(f.read("calls"), "--session-id sess_1") {
+		t.Error("usage was not looked up by the run's session id")
+	}
+	if !strings.Contains(env, `TERMINAL_DOCKER_VOLUMES=["`+f.ws+`:/workspace","`+f.cfg.ModCache+`:/go/pkg/mod:ro"]`) {
+		t.Errorf("run did not pass its own workspace mount:\n%s", env)
 	}
 	if !strings.Contains(f.transcript.String(), `"type": "result"`) {
 		t.Error("stream not copied to the transcript")
@@ -211,6 +214,24 @@ func TestKanbanDone(t *testing.T) {
 	if !strings.Contains(f.transcript.String(), "worker: ran go test") {
 		t.Error("worker log not copied to the transcript")
 	}
+	if !strings.Contains(calls, "--source kanban --title run_1") {
+		t.Error("worker usage not looked up by source and card title")
+	}
+	if !strings.Contains(f.read("dispatch_env"), "TERMINAL_DOCKER_VOLUMES=") {
+		t.Error("dispatch (whose env the worker inherits) lacks the run's mounts")
+	}
+}
+
+func TestKanbanNotSpawnedByUsIsInfra(t *testing.T) {
+	f := newFixture(t)
+	f.set("dispatch_none", "1")
+	res, _ := NewKanbanGoal(f.cfg).Attempt(context.Background(), f.input())
+	if res.Status != eval.StatusInfraError || !strings.Contains(res.Error, "not spawned by this dispatch") {
+		t.Errorf("result = %+v", res)
+	}
+	if calls := f.read("calls"); !strings.Contains(calls, "archive t_abc") {
+		t.Error("card not stopped")
+	}
 }
 
 func TestKanbanBlockedIsNoClaim(t *testing.T) {
@@ -287,6 +308,14 @@ func TestVerifyProfile(t *testing.T) {
 	f.set("config_mcp_servers", "\n")
 	if err := VerifyProfile(ctx, f.cfg); err != nil {
 		t.Errorf("confined profile rejected: %v", err)
+	}
+	f.set("config_terminal.docker_volumes", `["/x:/workspace"]`+"\n") // a profile-level mount would override per-run mounts
+	if err := VerifyProfile(ctx, f.cfg); err == nil {
+		t.Error("profile with terminal.docker_volumes accepted")
+	}
+	f.set("config_terminal.docker_volumes", "[]\n")
+	if err := VerifyProfile(ctx, f.cfg); err != nil {
+		t.Errorf("docker_volumes [] rejected: %v", err)
 	}
 	os.Remove(filepath.Join(f.bin, "config_terminal.backend")) // unset backend must fail
 	if err := VerifyProfile(ctx, f.cfg); err == nil {

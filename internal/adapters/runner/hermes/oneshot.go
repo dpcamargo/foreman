@@ -63,7 +63,7 @@ func (a *Oneshot) Attempt(ctx context.Context, in eval.AttemptInput) (eval.Attem
 		"--query-file", prompt, "--in", ws.Dir, "-t", "file,terminal",
 		"--max-turns", fmt.Sprint(a.cfg.MaxTurns), "--run-budget", seconds(in.WallCap),
 		"--source", "tool", "--yolo")
-	cmd.Env = a.cfg.env()
+	cmd.Env = a.cfg.runEnv(ws.Dir)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 	cmd.WaitDelay = 5 * time.Second
@@ -78,6 +78,8 @@ func (a *Oneshot) Attempt(ctx context.Context, in eval.AttemptInput) (eval.Attem
 	// The stream reports tokens only at the end, so the token cap is enforced by
 	// polling the session's usage (research R8).
 	var overBudget atomic.Bool
+	var sessionID atomic.Value // from the stream's init event
+	sessionID.Store("")
 	pollDone := make(chan struct{})
 	go func() {
 		defer close(pollDone)
@@ -88,7 +90,11 @@ func (a *Oneshot) Attempt(ctx context.Context, in eval.AttemptInput) (eval.Attem
 			case <-runCtx.Done():
 				return
 			case <-t.C:
-				if u, err := a.cfg.sessionUsage(runCtx, ws.Dir, start); err == nil && in.TokenCap > 0 && u.Billable() > in.TokenCap {
+				id := sessionID.Load().(string)
+				if id == "" || in.TokenCap <= 0 {
+					continue
+				}
+				if u, err := a.cfg.sessionUsage(runCtx, []string{"--session-id", id}, start); err == nil && u.Billable() > in.TokenCap {
 					overBudget.Store(true)
 					cancel()
 					return
@@ -96,12 +102,19 @@ func (a *Oneshot) Attempt(ctx context.Context, in eval.AttemptInput) (eval.Attem
 			}
 		}
 	}()
-	result, sawResult := readStream(stdout, in.Transcript)
+	result, sawResult := readStream(stdout, in.Transcript, func(id string) { sessionID.Store(id) })
 	waitErr := cmd.Wait()
 	cancel()
 	<-pollDone
 
-	usage, uerr := a.cfg.sessionUsage(context.WithoutCancel(ctx), ws.Dir, start)
+	id := result.SessionID
+	if id == "" {
+		id = sessionID.Load().(string)
+	}
+	usage, uerr := eval.Usage{}, fmt.Errorf("no session id")
+	if id != "" {
+		usage, uerr = a.cfg.sessionUsage(context.WithoutCancel(ctx), []string{"--session-id", id}, start)
+	}
 	if uerr != nil { // fall back to the stream's own totals
 		usage = eval.Usage{Input: result.Tokens.Input, Output: result.Tokens.Output,
 			Cached: result.Tokens.CacheRead, CacheWrite: result.Tokens.CacheWrite, CostSource: "none"}
@@ -126,14 +139,24 @@ func (a *Oneshot) Attempt(ctx context.Context, in eval.AttemptInput) (eval.Attem
 	return res, nil
 }
 
-// readStream copies the JSONL stream to the transcript and returns the result event.
-func readStream(r io.Reader, transcript io.Writer) (resultEvent, bool) {
+// readStream copies the JSONL stream to the transcript, reports the session id from the
+// init event, and returns the result event.
+func readStream(r io.Reader, transcript io.Writer, onInit func(string)) (resultEvent, bool) {
 	var res resultEvent
 	saw := false
 	sc := bufio.NewScanner(io.TeeReader(r, transcript))
 	sc.Buffer(make([]byte, 0, 64<<10), 16<<20)
 	for sc.Scan() {
 		line := sc.Bytes()
+		if strings.Contains(string(line), `"init"`) {
+			var ev struct {
+				Subtype   string `json:"subtype"`
+				SessionID string `json:"session_id"`
+			}
+			if json.Unmarshal(line, &ev) == nil && ev.Subtype == "init" && ev.SessionID != "" {
+				onInit(ev.SessionID)
+			}
+		}
 		if !strings.Contains(string(line), `"result"`) {
 			continue
 		}

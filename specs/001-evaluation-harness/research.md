@@ -200,6 +200,17 @@ checkout I/O for no extra safety over the trusted git dir.
   - Usage: from the `turn.completed` event's `usage` field (**verified** shape:
     `input_tokens`, `cached_input_tokens`, `cache_write_input_tokens`, `output_tokens`,
     `reasoning_output_tokens`).
+- **Hermes container mounts** (found live, 2026-10-07, Hermes v0.21.5): with
+  `container_persistent: false`, Hermes isolates containers per session and mounts the cwd
+  only for a session that registered a workspace. One-shot CLI sessions and Kanban workers
+  don't register one, so `/workspace` came up empty. Explicit `docker_volumes` are always
+  mounted, so both Hermes arms pass `TERMINAL_DOCKER_VOLUMES=["<ws>:/workspace",
+  "<cache>:/go/pkg/mod:ro"]` per run. A Kanban worker inherits it from the `dispatch` process
+  (Hermes strips `TERMINAL_*` only when dispatching for a different profile). The profile must
+  not set `terminal.docker_volumes`, or it overrides the variable; `VerifyProfile` refuses
+  such a profile. A card not spawned by the adapter's own dispatch is stopped and recorded as
+  infra_error. Hermes records no cwd on these sessions, so usage is looked up by session id
+  (A0) or by `--source kanban --title <run id>` (A2), not by `--cwd`.
 - **A0, Hermes single shot**:
   - Command: `HERMES_HOME=<foreman-arm profile> hermes chat --oneshot --format stream-json
     --query-file <io>/prompt.md --in <ws> -t file,terminal --max-turns <n>

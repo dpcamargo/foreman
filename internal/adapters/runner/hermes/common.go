@@ -67,9 +67,24 @@ func (c Config) env() []string {
 	return append(env, "HERMES_HOME="+c.HermesHome)
 }
 
+// runEnv is env plus this run's container mounts. Hermes mounts the cwd only for a
+// session that registered a workspace, which one-shot CLI sessions and kanban workers
+// don't (per-session isolation under container_persistent: false; verified against
+// Hermes v0.21.5). Explicit volumes are always mounted, so each run passes its own
+// workspace at /workspace and the module cache read-only. The profile itself must not
+// set terminal.docker_volumes, or it would override this (VerifyProfile checks).
+func (c Config) runEnv(ws string) []string {
+	vols, _ := json.Marshal([]string{ws + ":/workspace", c.ModCache + ":/go/pkg/mod:ro"})
+	return append(c.env(), "TERMINAL_DOCKER_VOLUMES="+string(vols))
+}
+
 func (c Config) run(ctx context.Context, args ...string) ([]byte, error) {
+	return c.runWith(ctx, c.env(), args...)
+}
+
+func (c Config) runWith(ctx context.Context, env []string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, c.Binary, args...)
-	cmd.Env = c.env()
+	cmd.Env = env
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
@@ -97,11 +112,13 @@ func (c Config) version(ctx context.Context) (string, error) {
 	return strings.TrimSpace(first) + "/" + model, nil
 }
 
-// sessionUsage sums every session the profile ran in ws since start. Each run has its
-// own workspace path, so the cwd filter isolates exactly this run's sessions.
-func (c Config) sessionUsage(ctx context.Context, ws string, start time.Time) (eval.Usage, error) {
-	out, err := c.run(ctx, "sessions", "export", "-", "--format", "jsonl",
-		"--cwd", ws, "--after", start.UTC().Add(-5*time.Second).Format(time.RFC3339), "--yes")
+// sessionUsage sums the profile's sessions that match filter and started after start.
+// Hermes records no cwd for these sessions, so runs are told apart by session id (A0)
+// or by source and card title (A2).
+func (c Config) sessionUsage(ctx context.Context, filter []string, start time.Time) (eval.Usage, error) {
+	args := append([]string{"sessions", "export", "-", "--format", "jsonl"}, filter...)
+	args = append(args, "--after", start.UTC().Add(-5*time.Second).Format(time.RFC3339), "--yes")
+	out, err := c.run(ctx, args...)
 	if err != nil {
 		return eval.Usage{}, err
 	}
@@ -220,6 +237,11 @@ func VerifyProfile(ctx context.Context, cfg Config) error {
 		if got != c.want {
 			return fmt.Errorf("hermes profile %s: %s is %q, want %q (quickstart step 0)", cfg.HermesHome, c.key, got, c.want)
 		}
+	}
+	if vols, err := get("terminal.docker_volumes"); err != nil {
+		return err
+	} else if vols != "" && vols != "[]" {
+		return fmt.Errorf("hermes profile %s sets terminal.docker_volumes (%s); unset it so each run can mount its own workspace: hermes -p <profile> config unset terminal.docker_volumes", cfg.HermesHome, vols)
 	}
 	mcp, err := get("mcp_servers")
 	if err != nil {

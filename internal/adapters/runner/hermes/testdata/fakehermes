@@ -24,7 +24,9 @@ case "$1" in
     shift; [ "$1" = "--board" ] && shift 2
     case "$1" in
       create) printf '%s\n' "$@" > "$d/create_argv"; echo '{"id": "t_abc", "status": "ready"}' ;;
-      dispatch) echo '{"spawned": 1}' ;;
+      dispatch) env > "$d/dispatch_env"
+                if [ -f "$d/dispatch_none" ]; then echo '{"spawned": []}'
+                else echo '{"spawned": [{"task_id": "t_abc", "assignee": "foreman-arm", "workspace": "x"}]}'; fi ;;
       show) st=$(cat "$d/kanban_status" 2>/dev/null || echo done)
             printf '{"task": {"id": "t_abc", "status": "%s"}, "latest_summary": %s, "runs": []}\n' "$st" "$(cat "$d/summary.json" 2>/dev/null || echo null)" ;;
       log) echo "worker: ran go test ./... ok" ;;
