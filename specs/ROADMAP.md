@@ -23,7 +23,7 @@ infrastructure).
 ## Status
 
 All nine specs are drafted. 001 has a plan (`/speckit-plan` done: plan.md, research.md,
-data-model.md, contracts/, quickstart.md); no feature has a tasks breakdown yet.
+data-model.md, contracts/, quickstart.md) and a tasks breakdown (67 tasks, tests first).
 
 ## Why this order, not a different one
 
@@ -107,6 +107,7 @@ Each one ships its own verifier. Its go/no-go is a decision replay of its own re
 
 ## Next steps
 
-1. Run `/speckit-tasks` for 001, then `/speckit-plan` for 002. Features after 002 may be built
+1. Optionally `/speckit-analyze` 001 (cross-artifact consistency), then `/speckit-implement` 001
+   starting with the MVP (Phases 1–3). `/speckit-plan` for 002 can run in parallel. Features after 002 may be built
    through `fm run` before the go/no-go (that is how the records accumulate); a "no-go" stops
    them until 001/002 are fixed.
