@@ -22,8 +22,11 @@ infrastructure).
 
 ## Status
 
-All nine specs are drafted. 001 has a plan (`/speckit-plan` done: plan.md, research.md,
-data-model.md, contracts/, quickstart.md) and a tasks breakdown (67 tasks, tests first).
+All nine specs are drafted. 001 is implemented: `fm eval record|validate|list|replay|spot|decide|report`.
+67 of its 71 tasks are done and verified against real Docker and Codex. Still open: the live
+Hermes checks (T054, T056), the `a0` part of quickstart step 6 (T068) and the final clean-home
+pass (T071). All four need the `foreman-arm` Hermes profile and Claude subscription tokens, so
+the operator runs them.
 
 ## Why this order, not a different one
 
@@ -97,17 +100,17 @@ Each one ships its own verifier. Its go/no-go is a decision replay of its own re
   class (22M–86M params); a small sentence-embedding model (22M–100M params).
 - 005 vector index: `sqlite-vec` inside the existing SQLite file, only if BM25 recall is
   measured short.
-- 001 task-record store: location outside every arm-readable workspace, and its format
-  versioning (spec 001 FR-003).
-- 001/002 code layout: start from the target tree in `AGENTS.md`, creating only the packages a
-  task needs.
+- 001 grader image: pinned to `golang:1.27.0-bookworm@sha256:ded31c68…` (the newest build past the
+  7-day cooldown on 2026-10-07). Bump to 1.27.1 after 2026-10-13.
+- 001 arm confinement: T-codex-deny and T-leak-scan passed live on 2026-10-07 (codex-cli
+  0.160.0). The Codex profile needs the Homebrew prefix readable (research R1).
 - 001/002 grader and verifier: image choice per language (Go/Node), dependency-cache strategy,
   exact `docker run` hardening flags.
 - 002 Claude runner: exact Hermes invocation for a confined, MCP-free implementer profile.
 
 ## Next steps
 
-1. Optionally `/speckit-analyze` 001 (cross-artifact consistency), then `/speckit-implement` 001
-   starting with the MVP (Phases 1–3). `/speckit-plan` for 002 can run in parallel. Features after 002 may be built
-   through `fm run` before the go/no-go (that is how the records accumulate); a "no-go" stops
-   them until 001/002 are fixed.
+1. Operator: create the `foreman-arm` Hermes profile (001 quickstart step 0), then run the Hermes
+   live tests and the `a0` decision gate (001 T054, T056, T068, T071).
+2. `/speckit-plan` for 002. Features after 002 may be built through `fm run` before the go/no-go
+   (that is how the records accumulate); a "no-go" stops them until 001/002 are fixed.
