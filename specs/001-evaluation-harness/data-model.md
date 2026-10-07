@@ -23,9 +23,10 @@ dollars are REAL and API-equivalent estimates unless `cost_source` says otherwis
 | request | TEXT NOT NULL | the original request text, verbatim |
 | repo_url | TEXT NOT NULL | anything `git clone` accepts |
 | base_commit | TEXT NOT NULL | full 40-hex SHA |
-| test_command | TEXT NOT NULL | JSON array (argv) run inside the grader, e.g. `["go","test","-json","./..."]` |
-| test_format | TEXT NOT NULL | `go-test-json` or `exit-code` |
+| test_command | TEXT | JSON array (argv) run inside the grader, e.g. `["go","test","-json","./..."]`; NULL only for a record without acceptance tests |
+| test_format | TEXT | `go-test-json` or `exit-code`; NULL when `test_command` is |
 | full_test_command | TEXT | JSON array, optional; used for the regression rate |
+| base_full_suite_passed | INTEGER | set during validation when `full_test_command` exists (research R5 step 4) |
 | wall_budget_s | INTEGER NOT NULL | default 1800 |
 | expects_clarification | INTEGER NOT NULL DEFAULT 0 | 1 when the operator confirmed the right outcome was to ask |
 | live_outcome | TEXT | `verified_success`, `failure`, `blocked`, `rescued` or `clarification`; NULL for manual records without one |
@@ -40,8 +41,8 @@ dollars are REAL and API-equivalent estimates unless `cost_source` says otherwis
 | created_at | TEXT NOT NULL | |
 
 Blob directory `records/<id>/`: `visible/` (files copied into the arm's workspace before it
-starts), `hidden/` (files the arm never sees), and an optional `reference.patch` (the live
-verified result).
+starts), `hidden/` (files the arm never sees; may be empty for a record without acceptance
+tests), and an optional `reference.patch` (the live verified result).
 
 Indexes: `(replayable, created_at)` and `(repo_url)`.
 
@@ -70,7 +71,26 @@ The unique constraint `(record_id, arm, arm_version, rep, base_commit)` is the c
 (FR-015). Requesting an existing finished row reuses it; an `infra_error` row is retried.
 
 Blob directory `runs/<id>/`: `prompt.md`, `transcript.jsonl`, `last.json` (structured
-result), `patch.diff`, `grade.json` and `test-output.jsonl`.
+result), `patch.diff`, `grade.json` and `test-output.jsonl`. Files an arm's CLI reads or writes
+are first created under `work/runs/<id>/io/`. They are moved here (redacted) after the run, so
+no `state/` path is ever handed to an arm (research R2).
+
+### `events`: one row per state change (constitution VII)
+
+| Column | Type | Notes |
+|---|---|---|
+| id | INTEGER PK AUTOINCREMENT | ordering cursor |
+| entity | TEXT NOT NULL | `record`, `run` or `report` |
+| entity_id | TEXT NOT NULL | |
+| from_status | TEXT | NULL on creation |
+| to_status | TEXT NOT NULL | for records: `replayable`, `not_replayable` or `created` |
+| detail | TEXT | JSON: reason, error, reused-cache flag |
+| at | TEXT NOT NULL | |
+
+Every write that changes a record's replayability, a run's status, or creates a report inserts
+its event **in the same transaction** as the change. `AddRecord`, `SetReplayable`, `StartRun`,
+`FinishRun`, `SweepLostRuns` and `SaveReport` each do this. Index: `(entity, entity_id, id)`.
+Feature 002 reuses this table for task, node and run events.
 
 ### `grades`: one row per graded run (FR-006, FR-010)
 
@@ -119,7 +139,8 @@ queued ──start──▶ running ──arm exits──▶ grading ──▶ s
 grading ── leak scan hit ──▶ contaminated               (counts as failure; flagged in report)
 ```
 
-Every transition is a single `UPDATE … WHERE id=? AND status=?` inside a transaction. A row is
+Every transition is a single `UPDATE … WHERE id=? AND status=?` plus its `events` insert, inside
+one transaction. A row is
 only moved out of `running` by its own process, or by the startup sweep. The sweep marks
 `running` rows `infra_error` with error `lost` when their PID is gone or its start time
 doesn't match (constitution VII).
@@ -127,22 +148,35 @@ doesn't match (constitution VII).
 ## Validation rules (not obvious from the column types)
 
 - **Replayable** (FR-004) requires all of:
+  0. the record has hidden tests (otherwise the reason is `no acceptance tests`);
   1. the base commit is fetchable;
-  2. `task_type = 'code'` and no rubric is needed;
+  2. `task_type = 'code'` (otherwise the reason is `no verifier for task type <t>`; the rubric
+     grader arrives with the first judgment-graded type, research R11);
   3. the grader on the unpatched base (with the visible tests applied) reports at least one
      hidden test failed, or a non-zero exit for `exit-code`;
   4. if `reference.patch` exists, the grader on base + reference reports every hidden test
      passed.
 
   A failure records the first rule that failed as `not_replayable_reason`. Rule 4 catches
-  broken hidden tests.
+  broken hidden tests. When `full_test_command` is set, validation also runs it on the
+  unpatched base and stores `base_full_suite_passed`.
+- A replay whose base commit can no longer be fetched (`ErrBaseNotFound`) records the run as
+  `infra_error`, and sets the record to `replayable = 0` with reason `base commit no longer
+  fetchable` (spec FR-004).
+- **full_suite_regressed** = `base_full_suite_passed = 1` AND the patched full suite fails.
+  NULL when the record has no `full_test_command`.
 - **success** = status `succeeded` AND not contaminated AND:
   - if `expects_clarification = 1`: `claimed = 'needs_clarification'`;
   - otherwise: `hidden_failed = 0`, `hidden_passed > 0`, and `full_suite_regressed` is not 1.
 - **false_success** = `claimed = 'done'` AND NOT success.
-- `fm eval record` rejects inputs that would make a record unusable: an empty `hidden/`, a
-  `test_command` that isn't a JSON array, a `base_commit` that isn't 40 hex characters, or a
-  hidden or visible file path that escapes the repo (`..`, absolute paths, symlinks).
+- `fm eval record` rejects inputs that would make a record unusable or unsafe:
+  - hidden tests without a `test_command`, or a `test_command` that isn't a non-empty JSON
+    array;
+  - a `base_commit` that isn't 40 hex characters;
+  - a hidden or visible file path that escapes the repo (`..`, absolute paths, symlinks).
+
+  An empty `hidden/` is accepted. The record is then kept for metrics only, with replayable
+  set to 0 and reason `no acceptance tests` (spec US1 scenario 3).
 - A record is immutable after creation, except for `replayable`, `not_replayable_reason` and
   `validated_at`. A changed task becomes a new record.
 
@@ -151,8 +185,9 @@ doesn't match (constitution VII).
 ```go
 type Record struct {
     ID, Source, TaskType, Category, Request, RepoURL, BaseCommit string
-    TestCommand, FullTestCommand []string
+    TestCommand, FullTestCommand []string // TestCommand nil only when there are no hidden tests
     TestFormat                   TestFormat
+    BaseFullSuitePassed          *bool // set by validation when FullTestCommand exists
     WallBudget                   time.Duration
     ExpectsClarification         bool
     Live                         *LiveOutcome // nil for manual records without one

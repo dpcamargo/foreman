@@ -28,9 +28,19 @@ type Workspaces interface {
     // Prepare: fresh clone of repo at base, hooks disabled, overlay applied (visible tests).
     Prepare(ctx context.Context, repoURL, base string, overlay fs.FS) (Workspace, error)
     // Export: the diff from base to the workspace's state (including untracked files),
-    // with the overlay excluded, written to dst.
+    // with the overlay excluded, written to dst. Computed with the trusted git dir captured
+    // at Prepare time, never with the workspace's own .git (research R6).
     Export(ctx context.Context, ws Workspace, dst string) error
     Destroy(ctx context.Context, ws Workspace) error
+}
+
+// Artifacts owns run files. Adapter: internal/adapters/artifacts. It keeps every file an arm
+// touches out of state/ (research R2) and redacts on the way in (research R5, Redaction).
+type Artifacts interface {
+    IODir(ctx context.Context, runID string) (string, error)              // creates work/runs/<id>/io
+    Transcript(ctx context.Context, runID string) (io.WriteCloser, error) // redacting writer → state/runs/<id>/transcript.jsonl
+    PatchPath(runID string) string                                        // state/runs/<id>/patch.diff (written by fm, not the arm)
+    Collect(ctx context.Context, runID string) error                      // move io/* → state/runs/<id>/ redacted; remove io/
 }
 
 // Grader grades a patch against hidden tests in a clean container. Adapter:
@@ -70,7 +80,8 @@ type AttemptInput struct {
     Prompt    string // rendered from prompts/arm_baseline.md
     WallCap   time.Duration
     TokenCap  int64  // billable tokens (research R8)
-    RunDir    string // where the adapter writes transcript.jsonl and last.json
+    RunDir    string // from Artifacts.IODir: the adapter writes prompt.md here and the CLI writes last.json; never under state/
+    Transcript io.Writer // fm-owned sink (redacting) that ends in state/runs/<id>/transcript.jsonl
 }
 
 type AttemptResult struct {
@@ -78,14 +89,22 @@ type AttemptResult struct {
     Question   string
     Usage      Usage
     Status     RunStatus // succeeded (attempt finished) | timed_out | budget_exceeded | infra_error
-    Transcript string    // path
 }
 ```
 
 ## Semantics every adapter must honour
 
-- **Workspaces**: never a linked worktree. Clone from the mirror with `--no-hardlinks`. Every
-  git call gets `-c core.hooksPath=/dev/null`. `Destroy` is idempotent.
+- **Workspaces**:
+  - never a linked worktree; clone from the mirror with `--no-hardlinks`;
+  - every git call gets `-c core.hooksPath=/dev/null`;
+  - `Prepare` copies the fresh `.git` to `work/runs/<id>/trusted.git` before the arm starts;
+  - `Export`, and any other host-side git call on an arm-written tree, uses
+    `--git-dir=<trusted.git> --work-tree=<ws>` with `GIT_CONFIG_NOSYSTEM=1`,
+    `GIT_CONFIG_GLOBAL=/dev/null`, `core.fsmonitor=false`, empty `diff.external`,
+    `--no-ext-diff` and `--no-textconv`. A planted `core.fsmonitor`, external diff or filter
+    driver in the workspace's `.git/config` MUST NOT execute (test T016);
+  - `Prepare` returns an error matching `ErrBaseNotFound` when the base commit can't be fetched;
+  - `Destroy` is idempotent and also removes `trusted.git`.
 - **Grader**:
   - the test stage runs with `--network=none` and no host mounts except the patched clone,
     the hidden tests (read-only) and the module volume (read-only);
@@ -98,8 +117,9 @@ type AttemptResult struct {
   - it MUST kill the CLI's whole process group on cap or context cancel;
   - a CLI that exits non-zero for provider reasons (rate limit, auth) returns
     `Status=infra_error` with the provider message, not an attempt failure.
-- **RecordStore**: `FinishRun` writes the run's final status and its grade in one transaction
-  (constitution VII).
+- **RecordStore**: every method that changes state writes its `events` row in the same
+  transaction (data-model.md, `events`; constitution VII). `FinishRun` writes the run's final
+  status, its grade and its event in one transaction.
 
 ## Architecture test
 

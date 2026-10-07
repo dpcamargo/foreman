@@ -1,8 +1,10 @@
 # Contract: arm invocations and their checks
 
-Exact invocations per arm (research R7). `<ws>` is the run's workspace, `<run>` is
-`state/runs/<id>/` (written by foreman, never passed to the CLI as a readable path except as
-an output file the CLI writes), and `<cache>` is `work/gomodcache` (read-only to arms).
+Exact invocations per arm (research R7). `<ws>` is the run's workspace. `<io>` is
+`work/runs/<id>/io/`, which holds every file a CLI is handed or writes; fm moves it into
+`state/runs/<id>/` (redacted) after the run, so no `state/` path ever reaches an arm. `<cache>`
+is `work/gomodcache` (read-only to arms). Transcripts are captured from the CLI's stdout by fm
+and written straight to `state/`.
 
 ## Prompt (`prompts/arm_baseline.md`, hashed into `arm_version`)
 
@@ -38,10 +40,10 @@ env -i HOME=$HOME PATH=$PATH TMPDIR=<ws>/.fm/tmp GOCACHE=<ws>/.fm/gocache GOPATH
   codex exec --ephemeral --json -C <ws> \
     -c 'default_permissions="fmarm"' \
     -c 'permissions.fmarm.filesystem={":minimal"="read", "<ws>"="write", "<GOROOT>"="read", "<cache>"="read"}' \
-    --output-schema schemas/arm_result.json -o <run>/last.json  -  < <run>/prompt.md
+    --output-schema schemas/arm_result.json -o <io>/last.json  -  < <io>/prompt.md
 ```
 
-- stdout (JSONL) goes to `<run>/transcript.jsonl`.
+- stdout (JSONL) goes to `state/runs/<id>/transcript.jsonl`, redacted.
 - Usage comes from the last `turn.completed.usage`.
 - `<ws>/.fm/` is excluded from the exported patch.
 - `codex --version` and the configured model form `arm_version`.
@@ -58,11 +60,11 @@ Profile `FOREMAN_HERMES_HOME` (created once; see quickstart.md):
 - model: the Claude model the operator chooses for baselines.
 
 ```text
-HERMES_HOME=<profile> hermes chat --oneshot --format stream-json --query-file <run>/prompt.md \
+HERMES_HOME=<profile> hermes chat --oneshot --format stream-json --query-file <io>/prompt.md \
   --in <ws> -t file,terminal --max-turns 200 --run-budget <wall cap s> --source tool --yolo
 ```
 
-- stdout goes to `<run>/transcript.jsonl`.
+- stdout goes to `state/runs/<id>/transcript.jsonl`, redacted.
 - The session id comes from the stream's final event. Usage comes from
   `hermes sessions export --session-id <id> -` (fields per research R7).
 - The final assistant message is parsed as `arm_result` JSON (fallback rule in R7).
@@ -71,11 +73,12 @@ HERMES_HOME=<profile> hermes chat --oneshot --format stream-json --query-file <r
 
 ```text
 HERMES_HOME=<profile> hermes kanban --board foreman-eval create "<record id> rep <n>" \
-  --body-file <run>/prompt.md --assignee foreman-arm --workspace dir:<ws> \
+  --body-file <io>/prompt.md --assignee foreman-arm --workspace dir:<ws> \
   --goal --goal-max-turns 20 --max-runtime <wall cap s> --max-retries 1 --json
 HERMES_HOME=<profile> hermes kanban --board foreman-eval dispatch --max 1
 # poll every 10 s:  hermes kanban --board foreman-eval show <card> --json   until done|blocked
-# usage:            hermes kanban runs <card> --json → session id → sessions export
+#   and each poll:  hermes kanban runs <card> --json → session id → sessions export → usage;
+#                   usage over the token cap → reclaim + archive the card → budget_exceeded
 ```
 
 - A card that ends `blocked` because its turn budget ran out counts as `claimed=none`.

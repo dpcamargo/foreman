@@ -71,6 +71,14 @@ bin/fm eval record … --hidden testdata/fixtures/addrepo/hidden-escape …   # 
 
 Expected: exit 2, a path-escape error, and no record created.
 
+```sh
+bin/fm eval record --repo $F/addrepo.git --base $(cat $F/addrepo.base) \
+  --request-file testdata/fixtures/addrepo/request.md --category refactor   # no --hidden
+```
+
+Expected: exit 1, `rec_… not replayable: no acceptance tests`. The record is kept for metrics
+(spec US1 scenario 3).
+
 ## 3. The grader is offline and clean (FR-006, SC-002)
 
 ```sh

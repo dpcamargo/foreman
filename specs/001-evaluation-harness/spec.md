@@ -138,7 +138,7 @@ column filled from real captured data.
 - The grading container fails to start (for example, a missing image): recorded as an
   infrastructure failure, outside the success-rate denominator.
 - Two arms produce different patches that both pass the hidden tests: both are successes. The
-  verified patch on the record is only a secondary signal for the regression-rate metric, never
+  verified patch on the record is a reference for validating the hidden tests (FR-004), never
   "the" answer.
 - A task whose correct outcome was to stop and ask (the operator confirmed the request was
   ambiguous): on replay, asking counts as success and guessing as failure.
@@ -162,9 +162,11 @@ column filled from real captured data.
 - **FR-003**: Task records MUST be stored outside every workspace an arm can read, in a
   versioned format. Adding a task MUST NOT require a code change in any arm runner. The storage
   location is a `/speckit-plan` decision.
-- **FR-004**: A record MUST be marked replayable only if its base commit is fetchable and the
-  clean-room grader confirms its hidden tests fail on that base. Otherwise it MUST be kept for
-  metrics with the reason it is not replayable.
+- **FR-004**: A record MUST be marked replayable only if it has hidden tests, its base commit is
+  fetchable, and the clean-room grader confirms its hidden tests fail on that base. Otherwise it
+  MUST be kept for metrics with the reason it is not replayable. A record without acceptance
+  tests is accepted and kept for metrics only. A base commit that stops being fetchable at
+  replay time makes the record not replayable from then on.
 - **FR-005**: The system MUST provide a runner for each baseline arm (A0: one single-shot Hermes
   session on Claude, using the operator's existing Anthropic subscription login; A1: one
   `codex exec` session; A2: Hermes `/goal` or a Kanban `--goal` card), each taking a task record
@@ -182,8 +184,9 @@ column filled from real captured data.
   past it; for a CLI that reports usage only at the end of a run, the cap is checked then. A run
   over either cap is recorded as failed, never silently extended.
 - **FR-009**: The system MUST capture, per replay run: success or failure, which hidden tests
-  passed or failed, wall-clock time, tokens/dollars or quota units, and whether human rescue
-  was invoked. It MUST also keep enough metadata (task id, arm, arm version, repetition, base
+  passed or failed, wall-clock time, and tokens, plus dollars or quota units where the arm's CLI
+  reports them. Replays never involve the operator, so human rescues are counted from live
+  records only. It MUST also keep enough metadata (task id, arm, arm version, repetition, base
   commit, timestamps) for the paired comparison in Appendix D: McNemar's test for success, and
   bootstrap intervals for cost and time. The harness need not compute those statistics, but MUST
   NOT discard the paired data.
@@ -208,8 +211,8 @@ column filled from real captured data.
   be replayable. The first decision replay contains code tasks only.
 - **FR-015**: Baseline results MUST be cached by (task id, base commit, arm, arm version) and
   reused; a baseline is re-run only when one of those keys changes.
-- **FR-016**: Every report MUST state the tokens, quota units and wall-clock time the replay
-  itself consumed, per arm and in total. The system MUST refuse to start a decision replay whose
+- **FR-016**: Every report MUST state the tokens (plus dollars or quota units where reported)
+  and wall-clock time the replay itself consumed, per arm and in total. The system MUST refuse to start a decision replay whose
   projected spend (from its smoke pass) exceeds an operator-set budget.
 - **FR-017**: Every report MUST state how many replayable records have accumulated since the last
   spot check. Replays are operator-triggered only; nothing in this feature schedules them.
@@ -237,14 +240,15 @@ column filled from real captured data.
 
 - **SC-001**: A task recorded with `fm eval record` can be replayed through A1 and graded end to
   end with zero foreman orchestrator code and no manual grading step.
-- **SC-002**: Every replay is graded in a container with no network access, and 100% of graded
-  runs have a recorded cost or quota figure and wall-clock time.
+- **SC-002**: The test stage of every grading runs in a container with no network access, and
+  100% of graded runs have recorded tokens and wall-clock time.
 - **SC-003**: Adding a task to the replay set takes one record command (or one `fm run`) and
   zero changes to arm runner code.
 - **SC-004**: A decision replay of an arm against itself is reported as indistinguishable,
   confirming the noise threshold isn't over-sensitive.
-- **SC-005**: No arm run exceeds its token or wall-clock cap, no baseline is re-run when its cache
-  key is unchanged, and every report states what the replay itself consumed.
+- **SC-005**: Every arm run that goes over its token or wall-clock cap is recorded as failed (none
+  is extended or dropped), no baseline is re-run when its cache key is unchanged, and every report
+  states what the replay itself consumed.
 - **SC-006**: No eval task is authored up front: the first decision replay uses only records
   produced by real work.
 - **SC-007**: A record whose hidden tests pass on its base commit never enters a replay.

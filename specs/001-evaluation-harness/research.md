@@ -52,8 +52,11 @@ names. A match marks the run `contaminated`, which counts as a failure.
 - `$FOREMAN_HOME` defaults to `~/.foreman`.
 - `state/` holds the SQLite database (`foreman.db`), record files (`records/<id>/`), run
   artifacts (`runs/<id>/`) and reports (`reports/<id>.{md,json}`). Arms can never read it.
-- `work/` holds the per-run workspaces and the shared read-only module cache. Arms see only
-  their own workspace (plus the cache, read-only).
+- `work/` holds the per-run workspaces, each run's `io/` directory, and the shared read-only
+  module cache. `work/runs/<id>/io/` holds every file an arm's CLI is handed or writes (prompt,
+  structured result). fm moves it into `state/runs/<id>/` after the run, so no path under
+  `state/` ever appears in an arm's argv, input or output (it would also trip the leak scan,
+  R1). Arms see only their own workspace (plus the cache, read-only).
 
 In Feature 002 the same layout moves under the `foreman` macOS user, and `work/` becomes the
 only path its Colima profile mounts (ADR 0001).
@@ -100,8 +103,12 @@ dependency. For each grading:
 1. **Prepare**: make a fresh clone at the base commit (R6), apply the patch with
    `git -c core.hooksPath=/dev/null apply --index`, and copy the visible tests in.
 2. **Fetch dependencies** (network on, no secrets, no host mounts except the clone, read-only):
-   run `go mod download` into a per-record named volume. This step is skipped when `go.sum`
-   matches an existing volume.
+   run `go mod download` into a named volume keyed by `go.sum`, with
+   `GOPROXY=https://proxy.golang.org`, `GOSUMDB=sum.golang.org`, `GONOSUMDB` and `GOPRIVATE`
+   empty, and `GOFLAGS=-mod=readonly`. Every module is therefore checksum-verified, and the
+   step only downloads: Go modules run no code at download time, and nothing from the patch is
+   executed here. Skipped when the volume exists. This is the one network-on step in grading;
+   it is logged as a deviation in plan.md Complexity Tracking (constitution VI).
 3. **Test** (`--network=none --read-only --tmpfs /tmp --cap-drop=ALL
    --security-opt no-new-privileges --pids-limit 512 --memory 2g --cpus 2`):
    - mount the clone read-write at `/src`, the hidden tests read-only at `/hidden`, and the
@@ -109,11 +116,26 @@ dependency. For each grading:
    - copy the hidden tests over `/src`;
    - run the record's test command with `go test -json`;
    - parse the per-test results.
-4. **Full suite** (optional, if the record has `full_test_command`): same isolation; used for
-   the regression rate.
+4. **Full suite** (optional, if the record has `full_test_command`): same isolation as the
+   test step. Validation runs it once on the unpatched base and stores
+   `base_full_suite_passed` on the record. A graded run has `full_suite_regressed = 1` only
+   when the base passed and the patched tree fails, so a suite that was already red never
+   counts as a regression.
 
 The image is `golang:1.27.1-bookworm`, pinned by digest at implementation time to a build at
 least 7 days old.
+
+**Redaction** (grader logs and arm transcripts, before anything is written to `state/`):
+- replace configured secret values with `[REDACTED]`. These are the values of fm's own
+  environment variables whose names contain `TOKEN`, `KEY`, `SECRET` or `PASSWORD`. fm reads no
+  other tool's credential files;
+- replace common token patterns (`gh[opusr]_[A-Za-z0-9]{36,}`, `github_pat_[A-Za-z0-9_]{50,}`,
+  `sk-[A-Za-z0-9-_]{20,}`, `xox[abpr]-[A-Za-z0-9-]{10,}`, `AKIA[0-9A-Z]{16}`, and PEM private-key
+  blocks) the same way;
+- truncate grader logs to 64 KiB.
+
+One redactor in `internal/core/eval` (pure: values and patterns in, text out), used by every
+writer.
 
 **Why**: the dependency fetch has to happen somewhere. Doing it in its own step, with no
 secrets and no access to hidden tests, keeps the test step fully offline (FR-006: "read-only
@@ -125,15 +147,35 @@ needed to parse it.
 - *A network-on test step*: violates constitution VI. Rejected.
 - *The Docker Go SDK*: a large dependency tree for a few `docker run` calls. Rejected.
 
-## R6. Fresh clones
+## R6. Fresh clones and trusted export
 
-**Decision**: keep one bare mirror per repo URL in `work/mirrors/` (fetched with
-`git fetch --prune`). Each run gets `git clone --no-hardlinks --no-checkout <mirror> <ws>`,
-then `git -c core.hooksPath=/dev/null checkout <base>`. Hooks are disabled everywhere, and
-there are no linked worktrees (constitution VI).
+**Decision**:
+- Keep one bare mirror per repo URL in `work/mirrors/` (fetched with `git fetch --prune`).
+- Each run gets `git clone --no-hardlinks --no-checkout <mirror> <ws>`, then a checkout of
+  the base.
+- Hooks are disabled everywhere, and there are no linked worktrees (constitution VI).
+- Right after checkout, fm copies the clone's `.git` to `work/runs/<id>/trusted.git`, outside
+  the workspace and not in the arm's allowlist. The arm keeps its own `.git` in the workspace
+  for `git status` and `git diff`, and fm never uses it again.
+- **Export** runs with the trusted git dir and a neutral environment:
+  `GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null git --git-dir=<trusted.git>
+  --work-tree=<ws> -c core.hooksPath=/dev/null -c core.fsmonitor=false -c diff.external=
+  -c core.attributesFile=/dev/null add -A`, then `diff --cached --binary --no-ext-diff
+  --no-textconv <base>`. The workspace's `.git/` and `.fm/` are excluded.
+- Every other host-side git call that touches an arm-written tree follows the same rules.
 
-**Why**: fast repeat clones without sharing a `.git` directory. A missing base commit is
-detected at fetch time, and the record is marked not replayable (spec edge case).
+**Why**: the agent can write anything in its workspace, including `.git/config`.
+`core.fsmonitor`, `diff.external`, and filter or textconv drivers defined there run commands
+when git runs. Hooks being disabled doesn't stop them (constitution VI: "hooks and config are
+not a security boundary"). Driver definitions live only in config, and the trusted git dir's
+config was written by fm before the arm started. So a `.gitattributes` that names a driver
+finds no definition and runs nothing. A missing base commit is detected at fetch time, and
+the record is marked not replayable (spec FR-004).
+
+**Alternatives considered**: computing the diff inside a throwaway container. Rejected: as
+safe, but slower per run, and another moving part. Copying the workspace tree (minus `.git`)
+into a second fresh clone and diffing there was also rejected: correct, but it doubles the
+checkout I/O for no extra safety over the trusted git dir.
 
 ## R7. Arm invocations
 
@@ -141,7 +183,8 @@ detected at fetch time, and the record is marked not replayable (spec edge case)
 
 - **A1, Codex**:
   - Command: `codex exec --ephemeral --json -C <ws> --output-schema schemas/arm_result.json
-    -o <run>/last.json` with the R1 permissions profile, reading the prompt from stdin.
+    -o <io>/last.json` with the R1 permissions profile, reading the prompt from stdin
+    (`<io>` = `work/runs/<id>/io`, R2).
   - Environment: `TMPDIR`, `GOCACHE` and `GOPATH` under the workspace, `GOMODCACHE` set to the
     read-only cache, `GOFLAGS=-mod=mod`, `GOPROXY=off`, `GOTOOLCHAIN=local`.
   - Usage: from the `turn.completed` event's `usage` field (**verified** shape:
@@ -149,8 +192,9 @@ detected at fetch time, and the record is marked not replayable (spec edge case)
     `reasoning_output_tokens`).
 - **A0, Hermes single shot**:
   - Command: `HERMES_HOME=<foreman-arm profile> hermes chat --oneshot --format stream-json
-    --query-file <prompt> --in <ws> -t file,terminal --max-turns <n>
+    --query-file <io>/prompt.md --in <ws> -t file,terminal --max-turns <n>
     --run-budget <seconds> --source tool --yolo`.
+  - The toolset names `file` and `terminal` are **verified** (`hermes tools list`).
   - The profile uses the Docker terminal backend (R1) with `docker_network: false` and no MCP
     servers. `--yolo` is acceptable only because every command runs in that container.
   - Usage: from the session record (`hermes sessions export --session-id <id>`, **verified**
@@ -160,7 +204,7 @@ detected at fetch time, and the record is marked not replayable (spec edge case)
   - `/goal` is an interactive-only slash command (**verified** in source). The headless
     equivalent is a Kanban card with `--goal`, which runs the same continuation engine in one
     worker session.
-  - Command: `hermes kanban --board foreman-eval create <title> --body-file <prompt>
+  - Command: `hermes kanban --board foreman-eval create <title> --body-file <io>/prompt.md
     --assignee foreman-arm --workspace dir:<ws> --goal --goal-max-turns <n>
     --max-runtime <s> --max-retries 1 --json`, then `hermes kanban --board foreman-eval
     dispatch --max 1`.
@@ -204,8 +248,12 @@ session export.
 **Decision**:
 - **Wall-clock**: a `context.WithTimeout` per run kills the process group. Hermes also gets
   `--run-budget` / `--max-runtime` so it can wrap up first.
-- **Tokens**: Hermes is stopped as soon as its stream reports usage over the cap. Codex
-  reports usage only at `turn.completed`, so its cap is checked when the run ends. A run over
+- **Tokens**:
+  - A0 is stopped as soon as its stream reports usage over the cap.
+  - A2 has no stream. On every 10-second poll, fm reads the worker session's usage
+    (`kanban runs <card> --json` gives the session id, then `sessions export`) and reclaims and
+    archives the card once usage is over the cap. It can overshoot by at most one poll interval.
+  - Codex reports usage only at `turn.completed`, so its cap is checked when the run ends. A run over
   either cap is recorded `budget_exceeded` or `timed_out` and counts as a failure (spec FR-008
   as amended).
 - The cap counts billable tokens: uncached input + output + cache writes. All token fields are

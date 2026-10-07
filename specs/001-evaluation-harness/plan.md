@@ -62,7 +62,8 @@ darwin/arm64)
 **Project Type**: a CLI (`fm`), the first piece of the single-binary orchestrator.
 
 **Performance Goals**: none beyond the arms' own time. Overhead per replay (clone + grade,
-excluding the arm) should stay under 60 s on a warm mirror and module cache.
+excluding the arm) should stay under 60 s on a warm mirror and module cache. This is measured
+in T071; if it's missed, it's recorded, not blocking.
 
 **Constraints**:
 - Token economy:
@@ -94,11 +95,11 @@ and after design, with the deviations listed under Complexity Tracking.*
 | III. Acceptance criteria first | A record is replayable only if its hidden tests fail on the base commit, and pass with the reference when one exists. Hidden tests never reach the arm | `fm eval validate`; T-codex-deny, T-hermes-confined, T-leak-scan (contracts/arms.md) |
 | IV. Single-threaded writes | Each run gets its own fresh clone. Runs are sequential, with no parallel writers anywhere | Sandbox adapter creates one workspace per run ID; no `--parallel` flag exists |
 | V. Cross-family review | Not applicable: 001 has no review step. The rubric grader that must be cross-family is deferred to the first judgment-graded task type (research R11) | Records needing a rubric are stored as not replayable |
-| VI. Isolation by default | Fresh clones from a bare mirror, no worktrees, hooks disabled. The grader runs `--network=none --read-only --cap-drop=ALL` with explicit mounts only. Arms are confined: Codex has a read allowlist and no network; Hermes runs in Docker with no network. Patches leave as diffs | `contracts/ports.md` adapter semantics; quickstart steps 3–4; container-tagged tests. **Deviation**: arms run as the operator user, not the `foreman` user (Complexity Tracking) |
-| VII. Durable & resumable state | All state is in SQLite (WAL). A run's final status and its grade are committed in one transaction. A startup sweep marks runs lost when their PID start-time fingerprint no longer matches. Re-running `decide` resumes through the cache | `RecordStore.FinishRun` and `SweepLostRuns`; quickstart step 7 |
+| VI. Isolation by default | Fresh clones from a bare mirror, no worktrees, hooks disabled. Patches are exported with an fm-owned trusted git dir, never the agent-writable `.git`, so planted fsmonitor, diff or filter config can't run on the host. The grader's test stage runs `--network=none --read-only --cap-drop=ALL` with explicit mounts only. Arms are confined: Codex has a read allowlist and no network; Hermes runs in Docker with no network. No `state/` path ever reaches an arm | `contracts/ports.md` adapter semantics; T016 (planted-config test), quickstart steps 3–4; container-tagged tests. **Deviations**: arms run as the operator user; the checksum-verified dependency fetch has network (Complexity Tracking) |
+| VII. Durable & resumable state | All state is in SQLite (WAL). Every state change is committed in the same transaction as its `events` row; a run's final status, grade and event commit together. A startup sweep marks runs lost when their PID start-time fingerprint no longer matches. Re-running `decide` resumes through the cache | `events` table (data-model.md); store tests T006/T033/T061 assert the event is in the same transaction; quickstart step 7 |
 | VIII. Gated deliberation and approval | Not applicable: no deliberation, no approvals, no external side effects. Arms work only in disposable clones | none needed |
 | IX. Minimal infrastructure | No new service. One third-party module (pure-Go SQLite); no Docker SDK, YAML, CLI framework or ORM. Vendor CLIs are used through their own sandbox and structured-output flags, with no custom agent loop | `go.mod` has one `require`; research R3–R5, R7 |
-| X. Hexagonal, minimal structure | Core is `internal/core/eval` (stdlib only, no I/O). Adapters are `sqlite`, `sandbox`, `container`, `runner/codex` and `runner/hermes`. `cmd/fm` only wires. Ports are declared in core, each with a current implementation | `internal/archtest` fails the build on violations; contracts/ports.md |
+| X. Hexagonal, minimal structure | Core is `internal/core/eval` (stdlib only, no I/O). Adapters are `sqlite`, `sandbox`, `container`, `artifacts`, `proc`, `runner/codex` and `runner/hermes`. `cmd/fm` only wires. Ports are declared in core, each with a current implementation | `internal/archtest` fails the build on violations; contracts/ports.md |
 | Measure as we go | This feature *is* the mechanism: records, replays, spot checks and decision replays. Baseline arms exist before Feature 002 builds the loop | Spec SC-001…SC-007; quickstart steps 2–6 |
 | Token economy | Caps on every arm run; baseline cache; required decision budget; spend printed per command and stored per report | FR-008, FR-015, FR-016; quickstart step 5 |
 | Continuous evaluation | Prompt versions are hashed into `arm_version`, so a prompt change is a new cache key and gets re-measured | `Arm.Version` contract |
@@ -142,12 +143,14 @@ internal/core/eval/
 ├── sample.go       sample_test.go       # seeded sampling, repo/category mix, majority flag
 ├── stats.go        stats_test.go        # metrics, paired bootstrap, thresholds
 ├── report.go       report_test.go       # Report type, markdown + JSON rendering (pure)
-└── ports.go                             # RecordStore, Workspaces, Grader, Arm (contracts/ports.md)
+├── redact.go       redact_test.go       # secret values + token patterns → [REDACTED] (pure)
+└── ports.go                             # RecordStore, Workspaces, Artifacts, Grader, Arm (contracts/ports.md)
 internal/adapters/
 ├── sqlite/         store.go store_test.go migrate.go
 ├── sandbox/        git.go git_test.go             # mirrors, fresh clones, overlay, export
 ├── container/      grader.go grader_test.go gotest.go   # docker CLI, go test -json parsing
 ├── proc/           proc.go proc_test.go            # PID + start-time fingerprint for lost-run sweep
+├── artifacts/      artifacts.go artifacts_test.go  # work/runs/<id>/io, redacting transcript sink, collect into state/
 └── runner/
     ├── codex/      codex.go codex_test.go contract_test.go leak_contract_test.go
     └── hermes/     oneshot.go kanban.go hermes_test.go contract_test.go
@@ -168,8 +171,8 @@ directories, so `go test ./...` stays hermetic.
 
 | PR | Contents | User story | Operator action |
 |---|---|---|---|
-| 1 | `go.mod`, `cmd/fm` skeleton, `core/eval` record and run types and input validation, `adapters/sqlite` + migration 0001, `archtest`, `fm eval record --no-validate` and `fm eval list` | US1 (storage half) | none |
-| 2 | `adapters/sandbox`, `adapters/container` grader, `fm eval validate`, fixtures, container-tagged tests (offline, no host mounts, no host env) | US1 complete | pin the grader image digest; run quickstart 2–3 |
+| 1 | `go.mod`, `cmd/fm` skeleton, `core/eval` record type and input validation, `adapters/sqlite` + migration 0001 (with `events`), `archtest` (T001–T011; no CLI command yet) | foundation for US1 | none |
+| 2 | `adapters/sandbox` (trusted export), `adapters/container` grader, redactor, `fm eval record`, `fm eval validate`, `fm eval list`, fixtures, container-tagged tests (offline, no host mounts, no host env) | US1 complete | pin the grader image digest; run quickstart 2–3 |
 | 3 | `Arm` port, `runner/codex` (A1) with the permissions profile, `ReplayOnce` with caps, cache and lost-run sweep, `fm eval replay`, T-codex-deny, T-codex-usage, T-leak-scan | US2 (A1) | run `go test -tags live` for Codex; quickstart 4–5, 7 |
 | 4 | `runner/hermes` single shot (A0) and Kanban goal (A2), T-hermes-confined, T-hermes-usage, T-kanban-goal | US2 complete | create the `foreman-arm` profile (quickstart 0; no login, it inherits the root Anthropic credentials); run the Hermes live tests deliberately (Claude tokens) |
 | 5 | `sample.go`, `stats.go`, `report.go`; `fm eval spot`, `fm eval decide` (smoke, usage gate, budget projection), `fm eval report` | US3 | quickstart 6; check the Anthropic usage page after the first smoke pass with A0 |
@@ -184,4 +187,5 @@ also pass their tagged suites, run by the operator.
 | Arms run as the operator's macOS user, not the dedicated `foreman` user (constitution VI, ADR 0001) | The `foreman` user is a manual, sudo-requiring prerequisite for Feature 002, and isn't created yet (ROADMAP prerequisites). 001 must be testable before it exists | Waiting for the `foreman` user would block baseline measurement for no gain: the read allowlist (Codex) and container (Hermes) keep arms away from secrets and hidden tests now, and the same adapters run unchanged under the `foreman` user later |
 | The grader uses the operator's current Docker context, not a `foreman`-owned Colima profile (constitution Technology Stack, spec 002 FR-019) | Same reason. Grader containers get only explicit mounts, so Colima's home mount isn't exposed to them | `FOREMAN_DOCKER_CONTEXT` makes the switch a configuration change in 002, with no code change |
 | Codex's token cap is checked at the end of the run, not enforced mid-run (spec FR-008 as amended) | `codex exec` 0.160.0 reports usage only at `turn.completed` and has no token-limit flag (research R8) | Killing on estimated tokens from transcript length would be guesswork; the wall-clock cap still bounds every run |
+| The grader's dependency-fetch step has network (constitution VI: verification runs offline) | Go modules must come from somewhere, and the test step must stay offline (spec FR-006). Splitting fetch from test is what keeps the test step at `--network=none` | Vendoring changes the repo under test, and a network-on test step breaks VI outright. Mitigation: the fetch step mounts only the clone, read-only, with no secrets and no hidden tests; it uses `GOPROXY=https://proxy.golang.org` with `GOSUMDB` checksum verification and `-mod=readonly`, and executes nothing from the patch (research R5) |
 | One third-party module (`modernc.org/sqlite`) | Principle VII requires SQLite; the standard library has no driver | `mattn/go-sqlite3` needs cgo (research R4) |

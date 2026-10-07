@@ -19,8 +19,8 @@ exits (FR-016).
 Records a task done outside foreman (FR-002). Feature 002 calls the same use case in-process.
 
 ```text
-fm eval record --repo <url> --base <sha> --request-file <path> --hidden <dir>
-               --test-cmd '<json argv>' [--test-format go-test-json|exit-code]
+fm eval record --repo <url> --base <sha> --request-file <path>
+               [--hidden <dir> --test-cmd '<json argv>'] [--test-format go-test-json|exit-code]
                [--visible <dir>] [--reference <patch>] [--full-test-cmd '<json argv>']
                [--category bug_fix|feature|refactor|dependency|research|ambiguous]
                [--expects-clarification] [--wall-budget 30m]
@@ -29,6 +29,8 @@ fm eval record --repo <url> --base <sha> --request-file <path> --hidden <dir>
                [--no-validate] [--json]
 ```
 
+- `--hidden` and `--test-cmd` go together. Without them the record is kept for metrics only:
+  not replayable, with reason `no acceptance tests` (spec US1 scenario 3).
 - Copies `--hidden` and `--visible` into `state/records/<id>/`, rejecting escaping paths and
   symlinks.
 - Validates immediately (as `fm eval validate <id>`) unless `--no-validate` is given.

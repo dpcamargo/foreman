@@ -38,13 +38,19 @@ decide(arms, n, k, seed, budgetTokens, budgetUSD, usageChecked):
 key := (rec.id, arm.name, arm.version(), rep, rec.base)
 run, reused := store.StartRun(key, myPID)          # tx: insert running row, or return cached
 if reused: return run
-ws  := workspaces.Prepare(rec.repo, rec.base, rec.visible)        # infra error → infra_error
-res := arm.Attempt(ws, prompt(rec), rec.wallBudget, tokenCap)
-workspaces.Export(ws, run.dir/patch.diff)
-g   := grader.Grade(rec, run.dir/patch.diff)                      # infra error → infra_error
+ws, err := workspaces.Prepare(rec.repo, rec.base, rec.visible)
+if err is ErrBaseNotFound:
+    store.SetReplayable(rec.id, false, "base commit no longer fetchable")   # tx: + event
+    store.FinishRun(run as infra_error); return                     # tx: status + event
+if err: store.FinishRun(run as infra_error); return
+io  := artifacts.IODir(run.id); tr := artifacts.Transcript(run.id)
+res := arm.Attempt(ws, prompt(rec), io, tr, rec.wallBudget, tokenCap)  # adapter writes io/prompt.md
+workspaces.Export(ws, artifacts.PatchPath(run.id))                # trusted git dir (research R6)
+artifacts.Collect(run.id)                                          # io/* → state/runs/<id>/, redacted
+g   := grader.Grade(rec, artifacts.PatchPath(run.id))             # infra error → infra_error
 g.contaminated = leakScan(run.dir/transcript.jsonl, stateDir, names(rec.hidden))
 g.success, g.false_success = rules(data-model.md)
-store.FinishRun(run with res, g)                                   # tx: status + grade
+store.FinishRun(run with res, g)                                   # tx: status + grade + event
 workspaces.Destroy(ws)
 ```
 
