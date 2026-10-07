@@ -193,6 +193,51 @@ eval repos and confirming no false block.
 
 ---
 
+### User Story 6 - Reuse a proven spec instead of re-deliberating a near-duplicate task
+(Priority: P3)
+
+As the operator, when a new task closely matches a prior task whose spec led to a verified,
+delivered, un-reverted result in the same repo, the system takes a fast "System 1" path:
+it adapts that prior spec to the new request with a cheap model instead of paying for a full
+strong-model `specify` call — and falls back to the full `specify` path whenever the match is
+weak, the adapted spec fails validation, or the task is high-risk.
+
+**Why this priority**: Specify is one of the few strong-model calls on every lane-S task
+(ARCHITECTURE.md §12 cost table). Recurring task shapes (dependency bumps, similar bug classes
+in one repo) re-derive nearly the same spec each time. This is the System 1 / System 2 split
+applied deliberately: replay cached System 2 judgment when the pattern is familiar, deliberate
+only when it isn't. It is P3 because it only pays off once enough verified episodes exist, and
+because it MUST ship disabled until the eval suite shows it is not worse (constitution:
+"Evaluation precedes the harness").
+
+**Independent Test**: Can be tested by running the same eval task twice in sequence: the first
+run takes the full `specify` path and is verified; the second, a lightly reworded variant, takes
+the reuse path, passes the same spec checks, and reaches a verified result — with its spec cost
+measurably below the first run's.
+
+**Acceptance Scenarios**:
+
+1. **Given** a new task and a prior episode in the same repo whose task similarity score exceeds
+   a configured threshold, and whose outcome was verified, delivered, and not reverted,
+   **When** the specify step begins, **Then** the engine (deterministic code, not a model)
+   selects the reuse path and a cheap model adapts the prior spec to the new request.
+2. **Given** an adapted spec, **When** it is produced, **Then** it goes through exactly the same
+   spec checks as a freshly written spec (cited files/symbols exist on the CURRENT base commit,
+   verify commands run on that base) — reuse never skips validation.
+3. **Given** the adapted spec fails any spec check, **When** that failure is processed, **Then**
+   the engine discards it and runs the full strong-model `specify` path, and this fallback MUST
+   NOT count as an attempt failure on the escalation ladder.
+4. **Given** a task triaged as high risk or routed to lane D, **When** the specify step begins,
+   **Then** the reuse path is never taken, regardless of similarity score.
+5. **Given** a task that took the reuse path, **When** it continues, **Then** every downstream
+   gate still applies unchanged — test-first by a different family, verification, cross-family
+   review, and any spec-approval gate required by policy.
+6. **Given** tasks that took the reuse path, **When** their outcomes are recorded, **Then** they
+   are tagged as reuse-path runs so their verified-success rate and cost can be compared against
+   full-`specify` runs of the same task class.
+
+---
+
 ### Edge Cases
 
 - What happens when a failure signature superficially matches (same error string) but the
@@ -214,6 +259,16 @@ eval repos and confirming no false block.
 - What happens when ADR writing (from the decide step, Feature 007) races with a plain
   episode-summary write for the same task? Both MUST be recorded; they are different
   memory kinds (decisions vs. episodes) per the schema in ARCHITECTURE.md §7.4/§6.
+- What happens when a reuse-path source episode is later reverted or its fix is found wrong?
+  That episode MUST immediately stop being eligible as a reuse source, and tasks that already
+  reused it are not retroactively failed, but their reuse tag lets the operator find them.
+- What happens when two prior episodes both exceed the similarity threshold but their specs
+  differ materially? The engine MUST NOT merge or pick between them by model judgment; it takes
+  the full `specify` path, since ambiguity is exactly the case System 1 should hand to System 2.
+- What happens when a reused spec leads to a task that fails verification? The ladder runs as
+  normal, and if the task ends FAILED or BLOCKED, the source episode's reuse eligibility for that
+  task class MUST be counted down (same helpful/harmful utility mechanism as lessons), so a
+  spec that keeps leading to failures stops being reused.
 
 ## Requirements *(mandatory)*
 
@@ -273,6 +328,26 @@ eval repos and confirming no false block.
 - **FR-017**: Content flagged above the configured risk threshold MUST block the task and
   record a `SecurityEvent`; content flagged below threshold MUST be annotated in the context
   pack, never silently dropped or silently passed through unflagged.
+- **FR-018**: The system MUST provide a spec-reuse path, disabled by default, that the engine
+  (deterministic code, threshold-based) may select instead of a full strong-model `specify`
+  call when a prior episode in the same repo exceeds a configured task-similarity threshold and
+  that episode's outcome was verified, delivered, and not reverted.
+- **FR-019**: Task similarity for FR-018 MUST be computed with whatever retrieval is active
+  (BM25 alone, or the hybrid path from FR-013 if enabled) — the reuse path MUST NOT require the
+  embedding path to be enabled.
+- **FR-020**: An adapted (reused) spec MUST pass the same spec checks as a freshly written spec
+  against the current base commit; on any check failure, or when more than one materially
+  different source episode qualifies, the engine MUST fall back to the full `specify` path,
+  and that fallback MUST NOT count as an attempt failure.
+- **FR-021**: The reuse path MUST NEVER be taken for tasks triaged high-risk or routed to lane D,
+  and MUST NOT bypass any downstream gate (test-first, verification, cross-family review, or a
+  policy-required spec approval).
+- **FR-022**: Every reuse-path run MUST be tagged with its source episode id, and source-episode
+  reuse eligibility MUST be tracked with the same helpful/harmful utility mechanism as lessons
+  (FR-005, FR-008), so a source that leads to failed or blocked tasks is automatically demoted.
+- **FR-023**: The reuse path MUST remain disabled until the eval suite (Feature 001) shows
+  reuse-path runs are not worse in verified-success rate than full-`specify` runs for the same
+  task classes, at lower spec cost; enabling it is an operator `policy.yaml` change.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -291,6 +366,9 @@ eval repos and confirming no false block.
 - **Content Screening Result**: a classifier verdict (clear / flagged-low / flagged-high)
   attached to any untrusted content before it is used in a context pack, lesson candidate, or
   prompt.
+- **Spec Reuse Record**: links a task that took the reuse path to its source episode, the
+  similarity score that selected it, and the outcome — feeding the source episode's reuse
+  eligibility (helpful/harmful) and the reuse-vs-full-specify comparison.
 
 ## Success Criteria *(mandatory)*
 
@@ -317,6 +395,10 @@ eval repos and confirming no false block.
 - **SC-007**: A known-malicious content sample (a deliberately injected instruction) is
   flagged before reaching any context pack or prompt in 100% of tested cases; a benign-content
   control set drawn from Feature 001's eval repos produces zero false high-risk blocks.
+- **SC-008**: On repeat task shapes in the eval suite, reuse-path runs reach a verified-success
+  rate no lower than full-`specify` runs of the same task classes (within the suite's noise
+  threshold) while spending measurably less on the specify step; zero reuse-path runs occur on
+  high-risk or lane-D tasks.
 
 ## Assumptions
 
@@ -333,10 +415,10 @@ eval repos and confirming no false block.
   component that will later (Feature 004 onward) push branches/PRs; this feature assumes that
   write path exists in some form (even a simple git-commit helper) as a prerequisite, and
   treats full PR integration as out of scope here.
-- Embeddings/vector search are explicitly out of scope for this feature, per constitution
-  Principle IX and ARCHITECTURE.md §6's verdict table — BM25 via FTS5 plus structured filters
-  is the complete retrieval mechanism unless a later, separately-specified feature demonstrates
-  measured recall gaps.
+- BM25 via FTS5 plus structured filters is the default and complete retrieval mechanism.
+  Vector search exists only as the opt-in path in User Story 4 (FR-013–014): local model, same
+  SQLite file, enabled only after a measured BM25 recall shortfall — consistent with
+  constitution Principle IX and ARCHITECTURE.md §6's verdict table.
 - The local embedding model (FR-013–014) and the content-screening classifier (FR-015–017)
   both run in-process inside the foreman daemon via the same local inference runtime (e.g.
   ONNX Runtime) that Feature 004's local triage classifier uses — one shared runtime hosting
@@ -352,3 +434,12 @@ eval repos and confirming no false block.
 - Model weights for both the embedding model and the screening classifier are pinned by exact
   version and checksum at install/build time, following the same no-`@latest` practice required
   of Feature 004's triage classifier.
+- Design frame (System 1 / System 2): memory is this system's System 1 — fast, reflexive replay
+  of cached System 2 judgment (failure signatures, lessons, decisions, and now reusable specs),
+  mostly with no model at all and, where a model is needed, only for classification, embedding,
+  or cheap adaptation. Every System 1 path in this feature has a defined fallback to the
+  deliberate System 2 path (strong-model call, reviewer, or the operator) on low confidence or
+  ambiguity; no System 1 path may act unsupervised on high-risk work.
+- The spec-reuse adaptation call (User Story 6) uses the same cheap route as triage/summaries
+  in Feature 004 (e.g. Gemini Flash or GPT Luna), not the local encoder models — adapting a spec
+  is short generation, which the in-process encoder runtime does not do.
