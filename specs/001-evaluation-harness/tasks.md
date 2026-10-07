@@ -49,10 +49,10 @@ a checkpoint you can test by itself.
 
 **Purpose**: module skeleton, the `fm` entry point, and the architecture guard.
 
-- [ ] T001 Create `go.mod` with module `github.com/dpcamargo/foreman` and `go 1.27`, and create `.gitignore` covering `bin/`, `*.test` and `coverage.out`
-- [ ] T002 Create `cmd/fm/main.go`: top-level dispatch with one subcommand, `eval` (sub-subcommands are added by later tasks); `fm`, `fm help` and unknown commands print usage; exit codes 0/1/2/3 per `specs/001-evaluation-harness/contracts/cli.md`
-- [ ] T003 [P] Write `internal/archtest/archtest_test.go`. It runs `go list -deps -json ./internal/core/...` and fails if any core package imports `internal/adapters/...`, `cmd/...` or a non-standard-library module. Include a table-driven test of the checking function on synthetic import lists, so the guard is proven to fail on a violation. While `internal/core` is empty, the test is skipped with a clear message (contracts/ports.md, "Architecture test")
-- [ ] T004 [P] Create `cmd/fm/env.go`. It resolves `FOREMAN_HOME` (default `~/.foreman`), creates `state/` with mode 0700 and `work/` with 0755, and reads `FOREMAN_DOCKER_CONTEXT`, `FOREMAN_HERMES_HOME` and `FOREMAN_GRADER_IMAGE` with their defaults (contracts/cli.md, "Environment"; research R2, R12)
+- [X] T001 Create `go.mod` with module `github.com/dpcamargo/foreman` and `go 1.27`, and create `.gitignore` covering `bin/`, `*.test` and `coverage.out`
+- [X] T002 Create `cmd/fm/main.go`: top-level dispatch with one subcommand, `eval` (sub-subcommands are added by later tasks); `fm`, `fm help` and unknown commands print usage; exit codes 0/1/2/3 per `specs/001-evaluation-harness/contracts/cli.md`
+- [X] T003 [P] Write `internal/archtest/archtest_test.go`. It runs `go list -deps -json ./internal/core/...` and fails if any core package imports `internal/adapters/...`, `cmd/...` or a non-standard-library module. Include a table-driven test of the checking function on synthetic import lists, so the guard is proven to fail on a violation. While `internal/core` is empty, the test is skipped with a clear message (contracts/ports.md, "Architecture test")
+- [X] T004 [P] Create `cmd/fm/env.go`. It resolves `FOREMAN_HOME` (default `~/.foreman`), creates `state/` with mode 0700 and `work/` with 0755, and reads `FOREMAN_DOCKER_CONTEXT`, `FOREMAN_HERMES_HOME` and `FOREMAN_GRADER_IMAGE` with their defaults (contracts/cli.md, "Environment"; research R2, R12)
 
 ---
 

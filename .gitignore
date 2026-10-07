@@ -1,2 +1,6 @@
 .claude/
 .hermes/
+bin/
+*.test
+coverage.out
+.DS_Store
