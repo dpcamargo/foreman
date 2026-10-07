@@ -20,6 +20,7 @@ import (
 	"github.com/dpcamargo/foreman/internal/adapters/container"
 	"github.com/dpcamargo/foreman/internal/adapters/proc"
 	"github.com/dpcamargo/foreman/internal/adapters/runner/codex"
+	"github.com/dpcamargo/foreman/internal/adapters/runner/hermes"
 	"github.com/dpcamargo/foreman/internal/adapters/sandbox"
 	"github.com/dpcamargo/foreman/internal/adapters/sqlite"
 	"github.com/dpcamargo/foreman/internal/core/eval"
@@ -590,6 +591,15 @@ func (a *app) arm(ctx context.Context, name string) (eval.Arm, error) {
 			Home: home, Path: os.Getenv("PATH"), CodexHome: os.Getenv("CODEX_HOME"),
 			ToolRoots: toolRoots("codex"),
 		}), nil
+	case "a0", "a2":
+		cfg := hermes.Config{HermesHome: a.env.HermesHome, ModCache: filepath.Join(a.env.Work, "gomodcache")}
+		if err := hermes.VerifyProfile(ctx, cfg); err != nil {
+			return nil, err
+		}
+		if base == "a0" {
+			return hermes.NewOneshot(cfg), nil
+		}
+		return hermes.NewKanbanGoal(cfg), nil
 	default:
 		return nil, usageErr("arm %s is not available yet", base)
 	}

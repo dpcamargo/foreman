@@ -1,0 +1,34 @@
+#!/bin/sh
+# Fake hermes CLI for hermes_test.go. Records calls next to itself; behaviour comes
+# from files next to it: chat_mode (ok|sleep|provider), kanban_status, session.jsonl.
+d=$(dirname "$0")
+printf '%s\n' "$*" >> "$d/calls"
+case "$1" in
+  --version) echo "Hermes Agent v9.9.9 (2026.10.1)"; echo "Install directory: /x"; exit 0 ;;
+  config)
+    if [ "$2" = "get" ] && [ -f "$d/config_$3" ]; then cat "$d/config_$3"; exit 0; fi
+    echo "default: claude-test"; echo "provider: anthropic"; exit 0 ;;
+  chat)
+    printf '%s\n' "$@" > "$d/chat_argv"; env > "$d/chat_env"
+    mode=$(cat "$d/chat_mode" 2>/dev/null)
+    echo '{"type":"system","subtype":"init","model":"claude-test","session_id":"sess_1","timestamp":1}'
+    echo '{"type":"tool_use","name":"terminal","input":{"command":"go test ./..."},"timestamp":2}'
+    case "$mode" in
+      sleep) sleep 300 & echo $! > "$d/child"; wait; exit 0 ;;
+      provider) echo '{"type":"result","session_id":"sess_1","exit_code":1,"text":"","error":"rate limit exceeded (429)","tokens":{"input":0,"output":0},"timestamp":3}'; exit 1 ;;
+    esac
+    cat "$d/result.jsonl"; exit 0 ;;
+  sessions) cat "$d/session.jsonl" 2>/dev/null; exit 0 ;;
+  kanban)
+    shift; [ "$1" = "--board" ] && shift 2
+    case "$1" in
+      create) printf '%s\n' "$@" > "$d/create_argv"; echo '{"id": "t_abc", "status": "ready"}' ;;
+      dispatch) echo '{"spawned": 1}' ;;
+      show) st=$(cat "$d/kanban_status" 2>/dev/null || echo done)
+            printf '{"task": {"id": "t_abc", "status": "%s"}, "latest_summary": %s, "runs": []}\n' "$st" "$(cat "$d/summary.json" 2>/dev/null || echo null)" ;;
+      log) echo "worker: ran go test ./... ok" ;;
+      reclaim|archive) : ;;
+    esac
+    exit 0 ;;
+esac
+exit 0

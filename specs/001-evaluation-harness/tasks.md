@@ -274,7 +274,7 @@ Depends on US1 (records and the grader).
 
 ### A0 and A2: Hermes
 
-- [ ] T051 [P] [US2] Write `internal/adapters/runner/hermes/hermes_test.go` (plain), using a fake `hermes` executable:
+- [X] T051 [P] [US2] Write `internal/adapters/runner/hermes/hermes_test.go` (plain), using a fake `hermes` executable:
   - A0's argv matches contracts/arms.md (`chat --oneshot --format stream-json --query-file … --in <ws> -t file,terminal --max-turns 200 --run-budget <s> --source tool --yolo`) with `HERMES_HOME=<profile>` and no state path anywhere;
   - the session id comes from the stream's final event;
   - usage comes from a recorded `sessions export` line (`testdata/hermes/session.jsonl`);
@@ -283,15 +283,15 @@ Depends on US1 (records and the grader).
   - at the wall cap the card is reclaimed and archived, and the run is `timed_out`;
   - **A2 token cap**: when the session usage read on a poll is over the cap, the card is reclaimed and archived, and the run is `budget_exceeded` (research R8);
   - `--query-file` and `--body-file` point into `<io>/`, never `state/`.
-- [ ] T052 [US2] Implement `internal/adapters/runner/hermes/oneshot.go` (arm `a0`) to pass the A0 cases of T051. It stops the process as soon as streamed usage passes the token cap (research R8).
-- [ ] T053 [US2] Implement `internal/adapters/runner/hermes/kanban.go` (arm `a2`) to pass the A2 cases of T051. Board `foreman-eval`, polling every 10 s. On each poll, read usage from `kanban runs --json` plus `sessions export` and enforce the token cap.
+- [X] T052 [US2] Implement `internal/adapters/runner/hermes/oneshot.go` (arm `a0`) to pass the A0 cases of T051. It stops the process as soon as streamed usage passes the token cap (research R8).
+- [X] T053 [US2] Implement `internal/adapters/runner/hermes/kanban.go` (arm `a2`) to pass the A2 cases of T051. Board `foreman-eval`, polling every 10 s. On each poll, read usage from `kanban runs --json` plus `sessions export` and enforce the token cap.
 - [ ] T054 [US2] Write `internal/adapters/runner/hermes/contract_test.go` (build tag `live`):
   - **T-hermes-confined**: inside the arm's container, `ls /Users` and a `cat` of the canary path both fail;
   - **T-hermes-usage**: non-zero tokens and an `estimated_cost_usd`;
   - **T-kanban-goal**: an A2 card on addrepo reaches `done` with a non-empty diff.
 
   It requires the `foreman-arm` profile from quickstart step 0.
-- [ ] T055 [US2] Wire `a0` and `a2` into `fm eval replay` in `cmd/fm/eval.go`. Before the first call, verify the profile: `HERMES_HOME=$FOREMAN_HERMES_HOME hermes mcp list` is empty, `terminal.backend` is `docker`, and `docker_network` is false. If not, refuse with exit 3 and say which setting is wrong.
+- [X] T055 [US2] Wire `a0` and `a2` into `fm eval replay` in `cmd/fm/eval.go`. Before the first call, verify the profile: `HERMES_HOME=$FOREMAN_HERMES_HOME hermes mcp list` is empty, `terminal.backend` is `docker`, and `docker_network` is false. If not, refuse with exit 3 and say which setting is wrong.
 - [ ] T056 [US2] Operator step: create the `foreman-arm` profile (quickstart step 0; it inherits the root Anthropic credentials, so no login is needed). Then run `go test -tags live ./internal/adapters/runner/hermes/...` deliberately, followed by quickstart step 5 with `--arm a0` and `--arm a2`.
 
 **Checkpoint**: US2 is complete. Any replayable record can be replayed through A0, A1 or A2,

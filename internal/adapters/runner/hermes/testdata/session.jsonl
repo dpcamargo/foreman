@@ -1,0 +1,1 @@
+{"id": "sess_1", "model": "claude-test", "input_tokens": 12, "output_tokens": 2475, "cache_read_tokens": 90812, "cache_write_tokens": 92553, "reasoning_tokens": 0, "estimated_cost_usd": 0.2743189, "actual_cost_usd": null, "cost_status": "estimated"}
