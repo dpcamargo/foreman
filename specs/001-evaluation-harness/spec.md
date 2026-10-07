@@ -177,8 +177,10 @@ column filled from real captured data.
   any rubric verdict. Feature 002's verifier reuses and extends it; this feature MUST NOT depend
   on 002.
 - **FR-007**: No arm's workspace may contain or reach the hidden tests before or during its run.
-- **FR-008**: Every arm run MUST have a hard token cap and a wall-clock cap. A run that hits
-  either cap is stopped and recorded as failed, never silently extended.
+- **FR-008**: Every arm run MUST have a hard token cap and a wall-clock cap. The wall-clock cap
+  stops the run when reached. The token cap stops the run as soon as the arm's CLI reports usage
+  past it; for a CLI that reports usage only at the end of a run, the cap is checked then. A run
+  over either cap is recorded as failed, never silently extended.
 - **FR-009**: The system MUST capture, per replay run: success or failure, which hidden tests
   passed or failed, wall-clock time, tokens/dollars or quota units, and whether human rescue
   was invoked. It MUST also keep enough metadata (task id, arm, arm version, repetition, base

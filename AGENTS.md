@@ -53,6 +53,7 @@ internal/adapters/   everything that touches the outside world
   runner/hermes/     implements the core Runner interface
   sandbox/           fresh clone per run
   container/         verifier and grader on foreman's own Colima profile
+internal/archtest/   fails the build if core imports an adapter or a third-party module
 migrations/          versioned SQL migrations
 schemas/             JSON schemas for structured model output
 prompts/             versioned prompt templates (hashed per run)
