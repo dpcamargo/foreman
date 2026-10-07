@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "summary"],
+  "properties": {
+    "status":   {"enum": ["done", "needs_clarification"]},
+    "summary":  {"type": "string", "maxLength": 2000},
+    "question": {"type": "string", "maxLength": 1000}
+  }
+}

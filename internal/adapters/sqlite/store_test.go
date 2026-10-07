@@ -344,3 +344,165 @@ func TestMigrationsAreIdempotent(t *testing.T) {
 		s.Close()
 	}
 }
+
+// --- runs (US2) ---
+
+var runID = regexp.MustCompile(`^run_\d{14}_[0-9a-f]{8}$`)
+
+func runKey(t *testing.T, s *Store) eval.RunKey {
+	t.Helper()
+	rec, err := s.AddRecord(context.Background(), fullRecord(), files())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return eval.RunKey{RecordID: rec.ID, Arm: "a1", ArmVersion: "codex/v/abc", Rep: 1, Base: rec.BaseCommit}
+}
+
+func finished(run eval.ReplayRun, status eval.RunStatus) eval.ReplayRun {
+	usd := 0.25
+	run.Status, run.Claimed = status, eval.ClaimDone
+	run.Usage = eval.Usage{Input: 100, Cached: 900, CacheWrite: 10, Output: 50, Reasoning: 5, USD: &usd, CostSource: "hermes-estimate"}
+	run.Wall = 90 * time.Second
+	run.StartedAt = time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+	run.EndedAt = run.StartedAt.Add(run.Wall)
+	return run
+}
+
+func TestStartRunAndCache(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t)
+	key := runKey(t, s)
+	pid := eval.PIDFingerprint{PID: 4242, StartedAt: "Wed Oct  7 12:00:00 2026"}
+
+	run, reused, err := s.StartRun(ctx, key, pid)
+	if err != nil || reused {
+		t.Fatalf("StartRun = %+v, %v, %v", run, reused, err)
+	}
+	if !runID.MatchString(run.ID) || run.Status != eval.StatusRunning || run.Key != key || run.PID != pid {
+		t.Errorf("new run = %+v", run)
+	}
+	if _, _, err := s.StartRun(ctx, key, pid); !errors.Is(err, eval.ErrRunInProgress) {
+		t.Errorf("second StartRun while running: err = %v, want ErrRunInProgress", err)
+	}
+
+	regressed := false
+	g := &eval.Grade{RunID: run.ID, HiddenPassed: 3, PerTest: []eval.TestResult{{Package: "p", Test: "TestA", Result: "pass"}},
+		FullSuiteRegressed: &regressed, Success: true}
+	done := finished(run, eval.StatusSucceeded)
+	if err := s.FinishRun(ctx, done, g); err != nil {
+		t.Fatal(err)
+	}
+
+	again, reused, err := s.StartRun(ctx, key, pid)
+	if err != nil || !reused {
+		t.Fatalf("cache: %+v, %v, %v", again, reused, err)
+	}
+	if again.ID != run.ID || again.Status != eval.StatusSucceeded || again.Claimed != eval.ClaimDone ||
+		!reflect.DeepEqual(again.Usage, done.Usage) || again.Wall != done.Wall {
+		t.Errorf("cached run = %+v\nwant %+v", again, done)
+	}
+	gotG, err := s.RunGrade(ctx, run.ID)
+	if err != nil || !reflect.DeepEqual(gotG, g) {
+		t.Errorf("RunGrade = %+v, %v; want %+v", gotG, err, g)
+	}
+	if err := s.FinishRun(ctx, done, g); err == nil {
+		t.Error("FinishRun on a finished run must fail")
+	}
+}
+
+func TestStartRunRetriesInfraError(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t)
+	key := runKey(t, s)
+	run, _, _ := s.StartRun(ctx, key, eval.PIDFingerprint{PID: 1})
+	failed := finished(run, eval.StatusInfraError)
+	failed.Error = "docker down"
+	if err := s.FinishRun(ctx, failed, nil); err != nil {
+		t.Fatal(err)
+	}
+	if g, err := s.RunGrade(ctx, run.ID); err != nil || g != nil {
+		t.Errorf("infra run grade = %v, %v; want nil", g, err)
+	}
+	retry, reused, err := s.StartRun(ctx, key, eval.PIDFingerprint{PID: 2})
+	if err != nil || reused || retry.ID != run.ID || retry.Status != eval.StatusRunning || retry.Error != "" || retry.PID.PID != 2 {
+		t.Errorf("retry = %+v, reused=%v, err=%v", retry, reused, err)
+	}
+}
+
+func TestFinishRunIsAtomic(t *testing.T) {
+	ctx := context.Background()
+	for _, table := range []string{"grades", "events"} {
+		t.Run("without "+table, func(t *testing.T) {
+			s := openTest(t)
+			key := runKey(t, s)
+			run, _, err := s.StartRun(ctx, key, eval.PIDFingerprint{PID: 1})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := s.db.ExecContext(ctx, `DROP TABLE `+table); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.FinishRun(ctx, finished(run, eval.StatusFailed), &eval.Grade{RunID: run.ID}); err == nil {
+				t.Fatal("FinishRun succeeded with a missing table")
+			}
+			var status string
+			s.db.QueryRowContext(ctx, `SELECT status FROM replay_runs WHERE id = ?`, run.ID).Scan(&status)
+			if status != string(eval.StatusRunning) {
+				t.Errorf("status = %s after failed FinishRun, want running", status)
+			}
+		})
+	}
+}
+
+func TestRunEvents(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t)
+	key := runKey(t, s)
+	run, _, _ := s.StartRun(ctx, key, eval.PIDFingerprint{PID: 1})
+	s.FinishRun(ctx, finished(run, eval.StatusFailed), &eval.Grade{RunID: run.ID})
+	rows, err := s.db.QueryContext(ctx, `SELECT coalesce(from_status,'nil'), to_status FROM events WHERE entity = 'run' AND entity_id = ? ORDER BY id`, run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var got []string
+	for rows.Next() {
+		var from, to string
+		rows.Scan(&from, &to)
+		got = append(got, from+"->"+to)
+	}
+	if want := []string{"nil->running", "running->failed"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("run events = %v, want %v", got, want)
+	}
+}
+
+func TestSweepLostRuns(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t)
+	key := runKey(t, s)
+	alivePID := eval.PIDFingerprint{PID: 1, StartedAt: "a"}
+	deadPID := eval.PIDFingerprint{PID: 2, StartedAt: "b"}
+	live, _, _ := s.StartRun(ctx, key, alivePID)
+	key2 := key
+	key2.Rep = 2
+	lost, _, _ := s.StartRun(ctx, key2, deadPID)
+
+	n, err := s.SweepLostRuns(ctx, func(p eval.PIDFingerprint) bool { return p == alivePID })
+	if err != nil || n != 1 {
+		t.Fatalf("SweepLostRuns = %d, %v; want 1", n, err)
+	}
+	var status, errMsg string
+	s.db.QueryRowContext(ctx, `SELECT status, coalesce(error,'') FROM replay_runs WHERE id = ?`, lost.ID).Scan(&status, &errMsg)
+	if status != string(eval.StatusInfraError) || errMsg != "lost" {
+		t.Errorf("lost run = %s %q", status, errMsg)
+	}
+	s.db.QueryRowContext(ctx, `SELECT status FROM replay_runs WHERE id = ?`, live.ID).Scan(&status)
+	if status != string(eval.StatusRunning) {
+		t.Errorf("live run = %s, want running", status)
+	}
+	var events int
+	s.db.QueryRowContext(ctx, `SELECT count(*) FROM events WHERE entity_id = ? AND to_status = 'infra_error'`, lost.ID).Scan(&events)
+	if events != 1 {
+		t.Errorf("sweep events = %d, want 1", events)
+	}
+}

@@ -3,6 +3,7 @@ package eval
 import (
 	"context"
 	"errors"
+	"io"
 	"io/fs"
 	"time"
 )
@@ -49,9 +50,9 @@ type Workspaces interface {
 	// trusted git dir, then applies overlay. It returns ErrBaseNotFound when base can't
 	// be fetched.
 	Prepare(ctx context.Context, id, repoURL, base string, overlay fs.FS) (Workspace, error)
-	// Export writes the diff from base to the workspace's current tree (untracked files
-	// included; overlay, .fm/ and .git/ excluded) using only the trusted git dir.
-	Export(ctx context.Context, ws Workspace, dst string) error
+	// Export returns the diff from base to the workspace's current tree (untracked files
+	// included; overlay, .fm/ and .git/ excluded), computed with the trusted git dir only.
+	Export(ctx context.Context, ws Workspace) ([]byte, error)
 	// Destroy removes the workspace and its trusted git dir. It is idempotent.
 	Destroy(ctx context.Context, ws Workspace) error
 }
@@ -91,4 +92,60 @@ type GradeOutput struct {
 // internal/adapters/container. Feature 002's verifier wraps it (spec FR-006).
 type Grader interface {
 	Grade(ctx context.Context, in GradeInput) (GradeOutput, error)
+}
+
+// RunStore persists replay runs and their grades. Adapter: internal/adapters/sqlite.
+// Every status change writes its events row in the same transaction.
+type RunStore interface {
+	// StartRun inserts a running row for key, or returns the finished run for key with
+	// reused=true. An infra_error row is reset to running (a retry). A running row owned
+	// by a live process returns ErrRunInProgress.
+	StartRun(ctx context.Context, key RunKey, pid PIDFingerprint) (run ReplayRun, reused bool, err error)
+	// FinishRun writes the final status, usage and grade (nil for infra errors) in one
+	// transaction.
+	FinishRun(ctx context.Context, run ReplayRun, g *Grade) error
+	// SweepLostRuns marks running rows whose process is gone as infra_error ("lost").
+	SweepLostRuns(ctx context.Context, alive func(PIDFingerprint) bool) (int, error)
+	RunGrade(ctx context.Context, runID string) (*Grade, error)
+}
+
+// Artifacts owns run files. Adapter: internal/adapters/artifacts. Files an arm reads
+// or writes live under work/runs/<id>/io and are moved into state/ only after the run,
+// so no state/ path ever reaches an arm (research R2).
+type Artifacts interface {
+	IODir(ctx context.Context, runID string) (string, error)
+	// Transcript returns a redacting writer that ends in state/runs/<id>/transcript.jsonl.
+	Transcript(ctx context.Context, runID string) (io.WriteCloser, error)
+	SavePatch(ctx context.Context, runID string, patch []byte) error
+	// Collect moves io/* into state/runs/<id>/ (redacted) and removes io/. Idempotent.
+	Collect(ctx context.Context, runID string) error
+}
+
+// AttemptInput is what an arm gets for one attempt.
+type AttemptInput struct {
+	Workspace  Workspace
+	Prompt     string
+	WallCap    time.Duration
+	TokenCap   int64     // billable tokens (research R8)
+	RunDir     string    // from Artifacts.IODir; the adapter writes prompt.md here
+	Transcript io.Writer // the CLI's event stream goes here
+}
+
+// AttemptResult is an arm's report. Status is StatusSucceeded (the attempt finished
+// within its caps), StatusTimedOut, StatusBudgetExceeded or StatusInfraError.
+type AttemptResult struct {
+	Status   RunStatus
+	Claimed  Claim
+	Question string
+	Usage    Usage
+	Error    string // set with StatusInfraError
+}
+
+// Arm attempts tasks. Adapters: internal/adapters/runner/codex (a1),
+// internal/adapters/runner/hermes (a0, a2); Feature 002 adds h1.
+type Arm interface {
+	Name() string
+	// Version identifies the CLI and model; the prompt hash is appended by the caller.
+	Version(ctx context.Context) (string, error)
+	Attempt(ctx context.Context, in AttemptInput) (AttemptResult, error)
 }

@@ -199,16 +199,16 @@ Depends on US1 (records and the grader).
 
 ### Tests: core and store (write first, must fail)
 
-- [ ] T030 [P] [US2] Write `internal/core/eval/run_test.go`:
+- [X] T030 [P] [US2] Write `internal/core/eval/run_test.go`:
   - `RunKey` equality (record, arm, arm version, rep, base);
   - `Usage.Billable()` = uncached input + output + cache writes;
   - which statuses count as failure (`timed_out`, `budget_exceeded`, `contaminated`, `failed`) and which are excluded from the denominator (`infra_error`);
   - arm-name parsing accepts `a0`, `a1`, `a2`, `h1` and the instance suffix (`a1#2` → base `a1`, instance name `a1#2`) and rejects anything else (contracts/cli.md, "Arm names").
-- [ ] T031 [P] [US2] Write `internal/core/eval/grade_test.go`, covering the `success` and `false_success` rules as a table over (status, claimed, hidden passed/failed, regression, `expects_clarification`, contaminated), from data-model.md. Leak scan cases:
+- [X] T031 [P] [US2] Write `internal/core/eval/grade_test.go`, covering the `success` and `false_success` rules as a table over (status, claimed, hidden passed/failed, regression, `expects_clarification`, contaminated), from data-model.md. Leak scan cases:
   - the state-dir path, or any hidden file's base name, in the transcript gives contaminated;
   - an unrelated mention of "test" does not;
   - matching is exact on path and base name, and case-sensitive.
-- [ ] T032 [P] [US2] Write `internal/core/eval/replay_test.go` for `ReplayOnce`, using fakes for every port:
+- [X] T032 [P] [US2] Write `internal/core/eval/replay_test.go` for `ReplayOnce`, using fakes for every port:
   - a cached finished run is returned without calling the arm;
   - an `infra_error` row is retried;
   - a `Prepare` error becomes `infra_error`;
@@ -220,33 +220,33 @@ Depends on US1 (records and the grader).
   - `FinishRun` is called exactly once, with the run and its grade;
   - `Destroy` is always called;
   - `--no-cache` creates a new row whose `arm_version` carries a `nocache-<id>` suffix, so it is never reused (contracts/cli.md).
-- [ ] T033 [P] [US2] Add the run-method tests to `internal/adapters/sqlite/store_test.go`:
+- [X] T033 [P] [US2] Add the run-method tests to `internal/adapters/sqlite/store_test.go`:
   - `StartRun` inserts a `running` row, or returns the finished row with `reused=true` for the same key;
   - `FinishRun` writes the status, the grade and the `events` row in one transaction (inject a grade or event insert failure and assert the status is unchanged);
   - `StartRun` (new row) and every sweep update insert an `events` row in the same transaction;
   - `SweepLostRuns` marks `running` rows whose fingerprint the `alive` func rejects as `infra_error` with error `lost`, and leaves live ones alone.
-- [ ] T034 [P] [US2] Write `internal/adapters/artifacts/artifacts_test.go`:
+- [X] T034 [P] [US2] Write `internal/adapters/artifacts/artifacts_test.go`:
   - `IODir` creates `work/runs/<id>/io`, outside `state/`;
   - a `Transcript` writer redacts as it writes, and the file ends up at `state/runs/<id>/transcript.jsonl`;
   - `Collect` moves `io/*` into `state/runs/<id>/` redacted and removes `io/`;
   - `Collect` is idempotent;
   - nothing is written outside `work/runs/<id>` and `state/runs/<id>`.
-- [ ] T035 [P] [US2] Write `internal/adapters/proc/proc_test.go`: the current process's fingerprint is alive; a fingerprint with the same PID but a different start time is not alive; a dead PID is not alive.
+- [X] T035 [P] [US2] Write `internal/adapters/proc/proc_test.go`: the current process's fingerprint is alive; a fingerprint with the same PID but a different start time is not alive; a dead PID is not alive.
 
 ### Implementation: core, store, proc
 
-- [ ] T036 [US2] Implement `internal/core/eval/run.go` (`ReplayRun`, `RunStatus`, `Claim`, `Usage`, `RunKey`, `PIDFingerprint`, arm-name parsing) to pass T030.
-- [ ] T037 [US2] Implement `internal/core/eval/grade.go` (`Rules(run, grade, record) (success, falseSuccess bool)` and `LeakScan(transcript string, stateDir string, hiddenNames []string) bool`) to pass T031.
-- [ ] T038 [US2] Add the `Arm` and `Artifacts` ports and their types (`AttemptInput`, `AttemptResult`) to `internal/core/eval/ports.go`, together with the run methods of `RecordStore` (`StartRun`, `FinishRun`, `SweepLostRuns`), per contracts/ports.md.
-- [ ] T039 [US2] Implement `ReplayOnce` and its prompt rendering in `internal/core/eval/replay.go` to pass T032:
+- [X] T036 [US2] Implement `internal/core/eval/run.go` (`ReplayRun`, `RunStatus`, `Claim`, `Usage`, `RunKey`, `PIDFingerprint`, arm-name parsing) to pass T030.
+- [X] T037 [US2] Implement `internal/core/eval/grade.go` (`Rules(run, grade, record) (success, falseSuccess bool)` and `LeakScan(transcript string, stateDir string, hiddenNames []string) bool`) to pass T031.
+- [X] T038 [US2] Add the `Arm` and `Artifacts` ports and their types (`AttemptInput`, `AttemptResult`) to `internal/core/eval/ports.go`, together with the run methods of `RecordStore` (`StartRun`, `FinishRun`, `SweepLostRuns`), per contracts/ports.md.
+- [X] T039 [US2] Implement `ReplayOnce` and its prompt rendering in `internal/core/eval/replay.go` to pass T032:
   - the prompt template text is passed in from `cmd`, not read by core;
   - `arm_version` = `Arm.Version()` plus the prompt's sha256[:12];
   - the algorithm follows contracts/report.md, `replayOnce`.
-- [ ] T040 [US2] Implement the run methods in `internal/adapters/sqlite/store.go` to pass T033.
-- [ ] T041 [P] [US2] Implement `internal/adapters/proc/proc.go` to pass T035. The PID start time comes from `ps -o lstart= -p <pid>` (standard library only; no `golang.org/x/sys`). The sweep runs once per command, so its cost doesn't matter.
-- [ ] T042 [P] [US2] Implement `internal/adapters/artifacts/artifacts.go` to pass T034, using the core redactor (T023) injected by `cmd`.
-- [ ] T043 [P] [US2] Create `schemas/arm_result.json` exactly as in contracts/arms.md.
-- [ ] T044 [P] [US2] Write `prompts/arm_baseline.md` per contracts/arms.md, "Prompt". It contains the request (verbatim), the visible test list, the instructions to run the visible tests and to ask rather than guess, and the JSON final-answer instruction. It never mentions hidden tests, foreman, or any state path.
+- [X] T040 [US2] Implement the run methods in `internal/adapters/sqlite/store.go` to pass T033.
+- [X] T041 [P] [US2] Implement `internal/adapters/proc/proc.go` to pass T035. The PID start time comes from `ps -o lstart= -p <pid>` (standard library only; no `golang.org/x/sys`). The sweep runs once per command, so its cost doesn't matter.
+- [X] T042 [P] [US2] Implement `internal/adapters/artifacts/artifacts.go` to pass T034, using the core redactor (T023) injected by `cmd`.
+- [X] T043 [P] [US2] Create `schemas/arm_result.json` exactly as in contracts/arms.md.
+- [X] T044 [P] [US2] Write `prompts/arm_baseline.md` per contracts/arms.md, "Prompt". It contains the request (verbatim), the visible test list, the instructions to run the visible tests and to ask rather than guess, and the JSON final-answer instruction. It never mentions hidden tests, foreman, or any state path.
 
 ### A1: Codex
 

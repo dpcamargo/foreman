@@ -118,7 +118,7 @@ func (m *Manager) ensureMirror(ctx context.Context, repoURL, base string) (strin
 }
 
 // Export implements eval.Workspaces. Only the trusted git dir is used.
-func (m *Manager) Export(ctx context.Context, ws eval.Workspace, dst string) error {
+func (m *Manager) Export(ctx context.Context, ws eval.Workspace) ([]byte, error) {
 	pathspec := []string{"--", ".", ":(exclude).fm", ":(exclude).git"}
 	for _, f := range ws.Overlay {
 		pathspec = append(pathspec, ":(exclude,literal)"+f)
@@ -128,17 +128,14 @@ func (m *Manager) Export(ctx context.Context, ws eval.Workspace, dst string) err
 		"-c", "core.fsmonitor=false", "-c", "diff.external=", "-c", "core.attributesFile=/dev/null",
 	}
 	if _, err := git(ctx, ws.Dir, append(append(trusted, "add", "-A"), pathspec...)...); err != nil {
-		return fmt.Errorf("stage workspace changes: %w", err)
+		return nil, fmt.Errorf("stage workspace changes: %w", err)
 	}
 	diff, err := git(ctx, ws.Dir, append(trusted, "diff", "--cached", "--binary", "--no-color",
 		"--no-ext-diff", "--no-textconv", ws.Base)...)
 	if err != nil {
-		return fmt.Errorf("diff workspace: %w", err)
+		return nil, fmt.Errorf("diff workspace: %w", err)
 	}
-	if err := os.WriteFile(dst, diff, 0o600); err != nil {
-		return fmt.Errorf("write patch: %w", err)
-	}
-	return nil
+	return diff, nil
 }
 
 // Destroy implements eval.Workspaces.

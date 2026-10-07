@@ -130,12 +130,12 @@ func TestExport(t *testing.T) {
 	write(t, filepath.Join(ws.Dir, ".fm", "tmp", "scratch"), "x")               // fm scratch
 	write(t, filepath.Join(ws.Dir, "visible_test.go"), "package s // edited\n") // overlay, even if edited
 
-	dst := filepath.Join(t.TempDir(), "patch.diff")
-	if err := m.Export(ctx, ws, dst); err != nil {
+	b, err := m.Export(ctx, ws)
+	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := os.ReadFile(dst)
-	if err != nil {
+	dst := filepath.Join(t.TempDir(), "patch.diff")
+	if err := os.WriteFile(dst, b, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	diff := string(b)
@@ -207,8 +207,8 @@ func TestExportIgnoresPlantedGitConfig(t *testing.T) {
 		os.Rename(s, filepath.Join(control, name))
 	}
 
-	dst := filepath.Join(t.TempDir(), "patch.diff")
-	if err := m.Export(ctx, ws, dst); err != nil {
+	b, err := m.Export(ctx, ws)
+	if err != nil {
 		t.Fatal(err)
 	}
 	for name, s := range sentinels {
@@ -216,7 +216,6 @@ func TestExportIgnoresPlantedGitConfig(t *testing.T) {
 			t.Errorf("planted %s config executed during Export", name)
 		}
 	}
-	b, _ := os.ReadFile(dst)
 	if !strings.Contains(string(b), "var X = 1") {
 		t.Errorf("export lost the change:\n%s", b)
 	}

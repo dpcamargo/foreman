@@ -477,3 +477,237 @@ func derefF(v *float64) float64 {
 	}
 	return *v
 }
+
+// --- runs (US2) ---
+
+const runColumns = `id, record_id, arm, arm_version, rep, base_commit, status, claimed,
+	tokens_input, tokens_cached, tokens_cache_write, tokens_output, tokens_reasoning,
+	usd, cost_source, wall_s, pid, pid_started_at, error, started_at, ended_at`
+
+// StartRun implements eval.RunStore.
+func (s *Store) StartRun(ctx context.Context, key eval.RunKey, pid eval.PIDFingerprint) (eval.ReplayRun, bool, error) {
+	var out eval.ReplayRun
+	var reused bool
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
+		row := tx.QueryRowContext(ctx, `SELECT `+runColumns+` FROM replay_runs
+			WHERE record_id = ? AND arm = ? AND arm_version = ? AND rep = ? AND base_commit = ?`,
+			key.RecordID, key.Arm, key.ArmVersion, key.Rep, key.Base)
+		existing, err := scanRun(row)
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return s.insertRun(ctx, tx, key, pid, &out)
+		case err != nil:
+			return fmt.Errorf("read run: %w", err)
+		case existing.Status == eval.StatusRunning:
+			return fmt.Errorf("run %s: %w", existing.ID, eval.ErrRunInProgress)
+		case existing.Status == eval.StatusInfraError:
+			return s.restartRun(ctx, tx, existing, pid, &out)
+		default:
+			out, reused = existing, true
+			return nil
+		}
+	})
+	if err != nil {
+		return eval.ReplayRun{}, false, err
+	}
+	return out, reused, nil
+}
+
+func (s *Store) insertRun(ctx context.Context, tx *sql.Tx, key eval.RunKey, pid eval.PIDFingerprint, out *eval.ReplayRun) error {
+	at := s.clock()
+	id, err := s.newID("run", at)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO replay_runs
+		(id, record_id, arm, arm_version, rep, base_commit, status, pid, pid_started_at, started_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, key.RecordID, key.Arm, key.ArmVersion, key.Rep, key.Base, string(eval.StatusRunning),
+		pid.PID, pid.StartedAt, at.Format(tsLayout)); err != nil {
+		return fmt.Errorf("insert run: %w", err)
+	}
+	if err := s.insertEvent(ctx, tx, "run", id, nil, string(eval.StatusRunning), map[string]any{"arm": key.Arm, "rep": key.Rep}); err != nil {
+		return err
+	}
+	*out = eval.ReplayRun{ID: id, Key: key, Status: eval.StatusRunning, PID: pid, StartedAt: at}
+	return nil
+}
+
+// restartRun resets an infra_error row for a retry.
+func (s *Store) restartRun(ctx context.Context, tx *sql.Tx, r eval.ReplayRun, pid eval.PIDFingerprint, out *eval.ReplayRun) error {
+	at := s.clock()
+	if _, err := tx.ExecContext(ctx, `UPDATE replay_runs SET status = ?, claimed = NULL,
+		tokens_input = NULL, tokens_cached = NULL, tokens_cache_write = NULL, tokens_output = NULL,
+		tokens_reasoning = NULL, usd = NULL, cost_source = NULL, wall_s = NULL,
+		pid = ?, pid_started_at = ?, error = NULL, started_at = ?, ended_at = NULL WHERE id = ?`,
+		string(eval.StatusRunning), pid.PID, pid.StartedAt, at.Format(tsLayout), r.ID); err != nil {
+		return fmt.Errorf("restart run %s: %w", r.ID, err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM grades WHERE run_id = ?`, r.ID); err != nil {
+		return fmt.Errorf("clear grade of %s: %w", r.ID, err)
+	}
+	from := string(eval.StatusInfraError)
+	if err := s.insertEvent(ctx, tx, "run", r.ID, &from, string(eval.StatusRunning), map[string]string{"retry_of": r.Error}); err != nil {
+		return err
+	}
+	*out = eval.ReplayRun{ID: r.ID, Key: r.Key, Status: eval.StatusRunning, PID: pid, StartedAt: at}
+	return nil
+}
+
+// FinishRun implements eval.RunStore.
+func (s *Store) FinishRun(ctx context.Context, r eval.ReplayRun, g *eval.Grade) error {
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		ended := r.EndedAt
+		if ended.IsZero() {
+			ended = s.clock()
+		}
+		u := r.Usage
+		res, err := tx.ExecContext(ctx, `UPDATE replay_runs SET status = ?, claimed = ?,
+			tokens_input = ?, tokens_cached = ?, tokens_cache_write = ?, tokens_output = ?, tokens_reasoning = ?,
+			tokens_billable = ?, usd = ?, cost_source = ?, wall_s = ?, error = ?, ended_at = ?
+			WHERE id = ? AND status = ?`,
+			string(r.Status), nullString(string(r.Claimed)),
+			u.Input, u.Cached, u.CacheWrite, u.Output, u.Reasoning, u.Billable(), u.USD, nullString(u.CostSource),
+			r.Wall.Seconds(), nullString(r.Error), ended.UTC().Format(tsLayout),
+			r.ID, string(eval.StatusRunning))
+		if err != nil {
+			return fmt.Errorf("finish run %s: %w", r.ID, err)
+		}
+		if n, _ := res.RowsAffected(); n != 1 {
+			return fmt.Errorf("finish run %s: not running", r.ID)
+		}
+		if g != nil {
+			if err := insertGrade(ctx, tx, r.ID, *g, s.timestamp()); err != nil {
+				return err
+			}
+		}
+		from := string(eval.StatusRunning)
+		return s.insertEvent(ctx, tx, "run", r.ID, &from, string(r.Status), map[string]string{"error": r.Error})
+	})
+}
+
+func insertGrade(ctx context.Context, tx *sql.Tx, runID string, g eval.Grade, at string) error {
+	perTest, err := json.Marshal(g.PerTest)
+	if err != nil {
+		return fmt.Errorf("encode per-test results: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO grades
+		(run_id, hidden_passed, hidden_failed, per_test, full_suite_regressed, contaminated, success, false_success, graded_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		runID, g.HiddenPassed, g.HiddenFailed, string(perTest), boolPtrInt(g.FullSuiteRegressed),
+		boolInt(g.Contaminated), boolInt(g.Success), boolInt(g.FalseSuccess), at); err != nil {
+		return fmt.Errorf("insert grade: %w", err)
+	}
+	return nil
+}
+
+// RunGrade implements eval.RunStore. A run without a grade returns nil, nil.
+func (s *Store) RunGrade(ctx context.Context, runID string) (*eval.Grade, error) {
+	var (
+		g                                eval.Grade
+		perTest                          string
+		regressed                        *int64
+		contaminated, success, falseSucc int64
+	)
+	err := s.db.QueryRowContext(ctx, `SELECT run_id, hidden_passed, hidden_failed, per_test, full_suite_regressed,
+		contaminated, success, false_success FROM grades WHERE run_id = ?`, runID).
+		Scan(&g.RunID, &g.HiddenPassed, &g.HiddenFailed, &perTest, &regressed, &contaminated, &success, &falseSucc)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read grade of %s: %w", runID, err)
+	}
+	if err := json.Unmarshal([]byte(perTest), &g.PerTest); err != nil {
+		return nil, fmt.Errorf("decode per-test results: %w", err)
+	}
+	g.FullSuiteRegressed = intPtrBool(regressed)
+	g.Contaminated, g.Success, g.FalseSuccess = contaminated != 0, success != 0, falseSucc != 0
+	return &g, nil
+}
+
+// SweepLostRuns implements eval.RunStore.
+func (s *Store) SweepLostRuns(ctx context.Context, alive func(eval.PIDFingerprint) bool) (int, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id, coalesce(pid, 0), coalesce(pid_started_at, '') FROM replay_runs WHERE status = ?`,
+		string(eval.StatusRunning))
+	if err != nil {
+		return 0, fmt.Errorf("list running runs: %w", err)
+	}
+	type candidate struct {
+		id  string
+		pid eval.PIDFingerprint
+	}
+	var lost []candidate
+	for rows.Next() {
+		var c candidate
+		if err := rows.Scan(&c.id, &c.pid.PID, &c.pid.StartedAt); err != nil {
+			rows.Close()
+			return 0, fmt.Errorf("read running run: %w", err)
+		}
+		if !alive(c.pid) {
+			lost = append(lost, c)
+		}
+	}
+	rows.Close()
+	for _, c := range lost {
+		err := s.withTx(ctx, func(tx *sql.Tx) error {
+			res, err := tx.ExecContext(ctx, `UPDATE replay_runs SET status = ?, error = 'lost', ended_at = ? WHERE id = ? AND status = ?`,
+				string(eval.StatusInfraError), s.timestamp(), c.id, string(eval.StatusRunning))
+			if err != nil {
+				return fmt.Errorf("mark %s lost: %w", c.id, err)
+			}
+			if n, _ := res.RowsAffected(); n != 1 {
+				return nil // finished meanwhile
+			}
+			from := string(eval.StatusRunning)
+			return s.insertEvent(ctx, tx, "run", c.id, &from, string(eval.StatusInfraError), map[string]any{"error": "lost", "pid": c.pid.PID})
+		})
+		if err != nil {
+			return 0, err
+		}
+	}
+	return len(lost), nil
+}
+
+func scanRun(sc scanner) (eval.ReplayRun, error) {
+	var (
+		r                                            eval.ReplayRun
+		status                                       string
+		claimed, costSource, pidStarted, errMsg, end *string
+		in, cached, cw, outT, reasoning, pid         *int64
+		usd, wall                                    *float64
+		started                                      string
+	)
+	err := sc.Scan(&r.ID, &r.Key.RecordID, &r.Key.Arm, &r.Key.ArmVersion, &r.Key.Rep, &r.Key.Base, &status, &claimed,
+		&in, &cached, &cw, &outT, &reasoning, &usd, &costSource, &wall, &pid, &pidStarted, &errMsg, &started, &end)
+	if err != nil {
+		return eval.ReplayRun{}, err
+	}
+	r.Status = eval.RunStatus(status)
+	if claimed != nil {
+		r.Claimed = eval.Claim(*claimed)
+	}
+	r.Usage = eval.Usage{Input: deref(in), Cached: deref(cached), CacheWrite: deref(cw), Output: deref(outT), Reasoning: deref(reasoning), USD: usd}
+	if costSource != nil {
+		r.Usage.CostSource = *costSource
+	}
+	if wall != nil {
+		r.Wall = time.Duration(*wall * float64(time.Second))
+	}
+	r.PID.PID = int(deref(pid))
+	if pidStarted != nil {
+		r.PID.StartedAt = *pidStarted
+	}
+	if errMsg != nil {
+		r.Error = *errMsg
+	}
+	if r.StartedAt, err = time.Parse(tsLayout, started); err != nil {
+		return eval.ReplayRun{}, fmt.Errorf("parse started_at: %w", err)
+	}
+	if end != nil {
+		if r.EndedAt, err = time.Parse(tsLayout, *end); err != nil {
+			return eval.ReplayRun{}, fmt.Errorf("parse ended_at: %w", err)
+		}
+	}
+	return r, nil
+}
