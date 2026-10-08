@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dpcamargo/foreman/internal/adapters/integrator"
 )
@@ -182,5 +183,38 @@ func TestPushFailureClassifiedAndPatchPreserved(t *testing.T) {
 	}
 	if sig == "" {
 		t.Error("expected a non-empty failure signature from ClassifyDeliveryFailure")
+	}
+}
+
+// T038: "retried with backoff" — PushWithBackoff must actually retry a transient-looking
+// push failure (not just classify-and-give-up) and still never touch the verified patch.
+func TestPushWithBackoffRetriesAndPreservesPatch(t *testing.T) {
+	ctx := context.Background()
+	src, base := sourceRepo(t)
+	ig := integrator.New(t.TempDir(), "owner", "repo", "token")
+
+	// Count attempts by using a push URL that fails: a path that doesn't exist. Since
+	// ApplyAndPush is the only entry point PushWithBackoff calls, wrapping it isn't
+	// necessary — we can infer the retry happened from timing/attempt semantics, but a
+	// cleaner proof: use a push URL that fails N times then succeeds isn't possible with a
+	// bare filesystem path. Instead, assert the patch stays byte-identical across the
+	// retries PushWithBackoff performs internally (it reuses the same patch slice on every
+	// attempt, never regenerating it).
+	badPush := filepath.Join(t.TempDir(), "nope.git")
+	patchCopy := []byte(testPatch)
+
+	start := time.Now()
+	err := ig.PushWithBackoff(ctx, "tsk_1", patchCopy, src, base, badPush)
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Fatal("expected PushWithBackoff to fail against a nonexistent remote, got nil")
+	}
+	// 3 attempts with retryBase=1s (default): at least 1s+2s of backoff should have elapsed
+	// if it actually retried rather than giving up after one try.
+	if elapsed < 500*time.Millisecond {
+		t.Errorf("PushWithBackoff returned in %v, expected it to have backed off and retried", elapsed)
+	}
+	if !bytes.Equal(patchCopy, []byte(testPatch)) {
+		t.Errorf("patch was mutated across retries: got %q", patchCopy)
 	}
 }

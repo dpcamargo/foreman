@@ -59,8 +59,7 @@ func DiffSHA256(patch []byte) string {
 // ApplyAndPush applies patch (a verified export diff) to a fresh agent/<taskID> branch off
 // baseCommit in the bare mirror of repoURL, and pushes it to pushURL. Any failure — push
 // included — leaves patch exactly as passed in (T038: never discard or regenerate the
-// verified patch); the caller/classifier decides how to retry (FR-008's ladder handles
-// backoff, this package does not).
+// verified patch).
 func (ig *Integrator) ApplyAndPush(ctx context.Context, taskID string, patch []byte, repoURL, baseCommit, pushURL string) error {
 	if taskID == "" || len(patch) == 0 {
 		return errors.New("task id and non-empty patch are required")
@@ -115,6 +114,43 @@ func (ig *Integrator) ApplyAndPush(ctx context.Context, taskID string, patch []b
 		return fmt.Errorf("push %s: %w", branch, err)
 	}
 	return nil
+}
+
+// PushWithBackoff retries ApplyAndPush up to 3 attempts with exponential backoff
+// (retryBase, doubling, capped at 30s — same shape as telegram.Client.Poll's backoff),
+// matching T038's "a push failure is classified as an infra/provider failure, retried with
+// backoff, and never discards or regenerates the verified patch." patch is passed through
+// to each attempt untouched — the verified patch is never regenerated on retry.
+func (ig *Integrator) PushWithBackoff(ctx context.Context, taskID string, patch []byte, repoURL, baseCommit, pushURL string) error {
+	backoff := ig.retryBase
+	if backoff <= 0 {
+		backoff = time.Second
+	}
+	const maxBackoff = 30 * time.Second
+	const maxAttempts = 3
+
+	var err error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		err = ig.ApplyAndPush(ctx, taskID, patch, repoURL, baseCommit, pushURL)
+		if err == nil {
+			return nil
+		}
+		if attempt == maxAttempts {
+			break
+		}
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+		if backoff < maxBackoff {
+			backoff *= 2
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+		}
+	}
+	return err
 }
 
 // ensureMirror reuses sandbox.Manager's mirror layout (fresh fetch/refresh) so the
