@@ -10,8 +10,10 @@
     launchctl load ~/Library/LaunchAgents/com.foreman.plist
 
   FOREMAN_HOME, TELEGRAM_BOT_TOKEN, and FOREMAN_GITHUB_TOKEN must already be set in this
-  user's environment (e.g. via a launchd EnvironmentVariables plist override, not committed
-  to this repo) before loading — see specs/003-daemon-telegram-control/quickstart.md step 0.
+  user's environment (e.g. via a launchd EnvironmentVariables plist override, or a wrapper
+  script that sources the operator's uncommitted `.env` file — see the repo root's
+  `.env_sample` — not committed to this repo) before loading — see
+  specs/003-daemon-telegram-control/quickstart.md step 0.
 -->
 <plist version="1.0">
   <dict>

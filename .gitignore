@@ -4,3 +4,8 @@ bin/
 *.test
 coverage.out
 .DS_Store
+
+# Operator-supplied secrets — never committed (AGENTS.md: no secrets in the repo).
+# Copy .env_sample to .env and fill it in; .env is never checked in.
+.env
+.env.local

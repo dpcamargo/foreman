@@ -25,8 +25,11 @@ go version                          # go1.27.x
    not the target configuration.
 
 ```sh
-export TELEGRAM_BOT_TOKEN=...
-export FOREMAN_GITHUB_TOKEN=...
+cp .env_sample .env   # then fill in .env — it is gitignored and must never be committed
+# .env holds (fill in as available; unset ones just disable that feature for now):
+#   TELEGRAM_BOT_TOKEN=...      # leave empty until the live-Telegram milestone
+#   FOREMAN_GITHUB_TOKEN=...    # leave empty until the US4 GitHub milestone
+set -a; . ./.env; set +a        # load whatever is filled in so far into this shell
 go build -o bin/foreman ./cmd/foreman
 go build -o bin/fm ./cmd/fm
 ```
