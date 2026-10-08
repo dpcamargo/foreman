@@ -132,3 +132,37 @@ to GitHub's REST API for PR creation needs no SDK — it is one JSON POST with a
 **Alternatives considered**: `go-github` (the common GitHub API Go client) — rejected per
 Principle IX for the same reason as R1: the integrator needs push, one PR-creation call, and
 one merge call — three operations, not a general-purpose GitHub client's full surface.
+
+## R7: Where the spec-approval gate pauses, given `engine.RunTask` already runs end to end
+
+**Decision**: Feature 002's `engine.RunTask` (spec → implement → verify → review, one
+synchronous call) gains exactly one new, optional `Config` field:
+`ApprovalGate func(ctx context.Context, spec TaskSpec) (approved bool, err error)`. It is called
+once, synchronously, immediately after `ValidateTaskSpec` succeeds and before the implement
+ladder starts. When `nil` (Feature 002's `fm run` never sets it), behavior is byte-for-byte
+unchanged — this is the one correction to plan.md's Constitution Check, which otherwise
+correctly says Feature 002's engine logic is untouched. When the daemon sets it, the function
+blocks until the Supervisor's approval bookkeeping resolves; the actual waiting (a channel or
+condition variable keyed by approval id) lives in `internal/core/engine/supervisor.go`, not
+inside `engine.RunTask` itself, so no polling loop is duplicated between the two packages — the
+hook's body is a single call out to the Supervisor, not new control flow in the engine loop.
+
+The **deliver/merge** approval needs no such hook: Feature 002 has no integration step at all
+(`engine.RunTask` returns a `TaskReport` and stops), so the daemon's "create a Delivery row,
+request the deliver approval, wait, then invoke the integrator" sequence happens entirely in
+`cmd/foreman`'s wiring, strictly after `RunTask` returns — a new downstream step, not a pause
+inserted into an existing one.
+
+**Why**: Rejecting both "fork `engine.RunTask` for the daemon" and "poll task status from
+outside the engine loop to decide when to pause" — the first duplicates Feature 002's ladder
+logic (a second copy to keep in sync), the second can't actually stop the implement ladder from
+starting once `RunTask` has been called, since nothing inside the loop would check anything.
+One optional, nil-safe hook keeps `fm run`'s path provably unchanged while giving the daemon a
+real pause point, and keeps the pause/resume mechanism itself in one place (the Supervisor)
+instead of two.
+
+**Alternatives considered**: Decomposing `engine.RunTask` into separate `Specify`/`ImplementLoop`
+methods the daemon calls one at a time — rejected for this feature: it's a bigger refactor of
+tested Feature 002 code than the gate hook, and Feature 006 (DAG decomposition) is where
+`engine.RunTask`'s monolithic shape is expected to change anyway; doing it piecemeal now risks
+two half-migrations.

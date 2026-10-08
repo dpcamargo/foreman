@@ -13,8 +13,10 @@ append-only notification outbox with a durable cursor over Feature 002's `events
 startup reconciler (reused from 002) before any new dispatch, and an integrator that is the
 only component holding a GitHub push credential — applying verified patches to `agent/<task>`
 branches and opening draft PRs, merging only on a second nonce-bound approval. Feature 002's
-engine, ladder, and verification logic are reused unchanged; only the dispatch trigger changes
-from a CLI argument to Telegram commands and the reconciler's own requeue.
+verification and ladder logic are reused unchanged; the engine gains one optional, nil-safe
+approval-gate hook (research.md R7) that `fm run` never sets, so its existing behavior is
+unaffected. Only the dispatch trigger changes from a CLI argument to Telegram commands and the
+reconciler's own requeue.
 
 ## Technical Context
 
@@ -67,13 +69,13 @@ ARCHITECTURE.md §8.5 (at most 2 implement/verify attempts in flight at once on 
 | Principle | Check | Mechanism |
 |---|---|---|
 | I. Deterministic orchestration | Telegram command/button parsing and the approval nonce check are pure Go switch/compare logic; no model call sits in that path (FR-002, FR-006) | `internal/adapters/telegram/commands.go` parser; `internal/core/control` nonce validation; unit tests assert zero LLM client is constructed to handle a command |
-| II. Evidence-based verification | Unchanged — Feature 002's `engine.Verifier` still decides "done"; this feature only changes what triggers a task, never what completes one | No new verifier path; `internal/core/engine` untouched except the Supervisor wrapper (research.md R3) |
+| II. Evidence-based verification | Unchanged — Feature 002's `engine.Verifier` still decides "done"; this feature only changes what triggers a task and adds one optional, nil-safe approval-gate hook before the implement ladder (research.md R7) — `fm run`'s own path is byte-for-byte unchanged since it never sets that hook | No new verifier path; `internal/core/engine` gains one `Config` field, not new logic; existing `engine_test.go` cases still pass unmodified |
 | III. Acceptance criteria first | Unchanged — reused from Feature 002 | n/a (no new spec/implement logic) |
 | IV. Single-threaded writes | The Supervisor caps concurrent task dispatch (config, default 2) so at most that many implement/verify attempts run at once, each in its own disposable clone | `internal/core/engine/supervisor.go` semaphore; `supervisor_test.go` |
 | V. Cross-family review | Unchanged | n/a |
 | VI. Isolation by default | Integrator applies patches with git hooks disabled and `core.fsmonitor=false`, same hardening as `internal/adapters/sandbox/git.go`'s existing `gitEnv()`/`git()` helpers, reused rather than reimplemented | `internal/adapters/integrator/integrator.go` |
 | VII. Durable & resumable state | FR-010: daemon runs Feature 002's reconciler at startup, before any Telegram-triggered dispatch is accepted; SIGTERM handling stops accepting new work and lets the reconciler recover the rest on next start | `cmd/foreman/main.go` startup order; `internal/core/engine.Reconciler` (existing, from 002) |
-| VIII. Gated deliberation & approval | FR-005/FR-016: approvals are nonce-bound to a sha256 of the exact artifact; merging to the default branch needs an approval plus a second confirmation step; nothing is ever auto-approved on a timeout (FR-006, edge case) | `internal/core/control.Approval`, `ValidateApproval`; `cmd/foreman` merge handler requires two separate Telegram round-trips |
+| VIII. Gated deliberation & approval | FR-005/FR-016: approvals are nonce-bound to a sha256 of the exact artifact; merging to the default branch needs an approval plus a second confirmation step; nothing is ever auto-approved on a timeout (FR-006, edge case). The spec-approval gate blocks inside `engine.RunTask` via the R7 hook; the deliver/merge gate runs after `RunTask` returns, in `cmd/foreman` | `internal/core/control.Approval`, `ValidateApproval`; `engine.Config.ApprovalGate` (R7); `cmd/foreman` merge handler requires two separate Telegram round-trips |
 | IX. Minimal infrastructure | No job queue, no message bus, no Telegram SDK; long polling + stdlib HTTP; SQLite polling plus in-process channel wakeups (constitution Technology Stack: "level-triggered reconcile loop plus in-process event wakeups") | research.md R1–R4 |
 | X. Hexagonal structure | New core: `internal/core/control` (approvals, allowlist check, outbox cursor advance — pure). New adapters: `internal/adapters/telegram`, `internal/adapters/localapi`, `internal/adapters/notifier`, `internal/adapters/integrator`. `cmd/foreman` only wires | `internal/archtest` (existing) extended to cover the new core package |
 
@@ -109,9 +111,11 @@ cmd/
 internal/
 ├── core/
 │   ├── task/                  # existing (002): add Paused/Cancelled TaskStatus + transitions
-│   ├── engine/                # existing (002): unchanged except supervisor.go (new)
+│   ├── engine/                # existing (002): + one optional Config.ApprovalGate hook (R7)
+│   │   ├── engine.go          #   NEW field only; nil behavior is unchanged from 002
 │   │   └── supervisor.go      # NEW: bounded-concurrency dispatch, pause/cancel via context,
-│   │                          #   core/engine port (ctx map keyed by task id — pure Go, no I/O)
+│   │                          #   resolves ApprovalGate waits (ctx map keyed by task id — pure
+│   │                          #   Go, no I/O)
 │   └── control/                # NEW: approvals, allowlist check, outbox cursor advance,
 │       ├── approval.go        #   delivery record — all pure, no I/O (ports declared here)
 │       ├── allowlist.go
