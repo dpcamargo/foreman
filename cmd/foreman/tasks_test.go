@@ -2,18 +2,22 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"strings"
 	"testing"
 
+	"github.com/dpcamargo/foreman/internal/core/control"
 	"github.com/dpcamargo/foreman/internal/core/engine"
 	"github.com/dpcamargo/foreman/internal/core/task"
 )
 
 // fakeTaskStore is a minimal in-memory taskStore for tests that don't need real SQLite.
 type fakeTaskStore struct {
-	tasks []task.Task
-	nodes map[string][]task.Node
+	tasks     []task.Task
+	nodes     map[string][]task.Node
+	approvals map[string]control.Approval
+	allowed   []int64
 }
 
 func newFakeTaskStore() *fakeTaskStore {
@@ -60,12 +64,78 @@ func (s *fakeTaskStore) RecentTasks(ctx context.Context, limit int) ([]task.Task
 	return out, nil
 }
 
+func (s *fakeTaskStore) CreateApproval(ctx context.Context, a control.Approval) (control.Approval, error) {
+	if a.ID == "" {
+		a.ID = "apv_" + task.NewID("")
+	}
+	if s.approvals == nil {
+		s.approvals = make(map[string]control.Approval)
+	}
+	s.approvals[a.ID] = a
+	return a, nil
+}
+func (s *fakeTaskStore) Approval(ctx context.Context, id string) (control.Approval, error) {
+	a, ok := s.approvals[id]
+	if !ok {
+		return control.Approval{}, fmt.Errorf("approval not found: %s", id)
+	}
+	return a, nil
+}
+func (s *fakeTaskStore) ResolveApproval(ctx context.Context, id, status, response, reason string) error {
+	a, ok := s.approvals[id]
+	if !ok {
+		return fmt.Errorf("approval not found: %s", id)
+	}
+	a.Status = status
+	a.Response = response
+	a.Reason = reason
+	s.approvals[id] = a
+	return nil
+}
+func (s *fakeTaskStore) AllowedUserIDs(ctx context.Context) ([]int64, error) { return s.allowed, nil }
+func (s *fakeTaskStore) PendingApprovalForTask(ctx context.Context, taskID string) (control.Approval, error) {
+	for _, a := range s.approvals {
+		if a.TaskID == taskID && a.Status == "pending" {
+			return a, nil
+		}
+	}
+	return control.Approval{}, fmt.Errorf("no pending approval for task %s", taskID)
+}
+
 type fakeDispatcher struct {
 	dispatched []engine.RunParams
+	waits      map[string]chan bool
 }
 
 func (d *fakeDispatcher) Dispatch(ctx context.Context, params engine.RunParams) {
 	d.dispatched = append(d.dispatched, params)
+}
+func (d *fakeDispatcher) WaitForApproval(ctx context.Context, approvalID string) (bool, error) {
+	if d.waits == nil {
+		d.waits = make(map[string]chan bool)
+	}
+	ch, ok := d.waits[approvalID]
+	if !ok {
+		ch = make(chan bool, 1)
+		d.waits[approvalID] = ch
+	}
+	select {
+	case approved := <-ch:
+		return approved, nil
+	case <-ctx.Done():
+		return false, ctx.Err()
+	}
+}
+func (d *fakeDispatcher) ResolveApproval(approvalID string, approved bool) {
+	if d.waits == nil {
+		d.waits = make(map[string]chan bool)
+	}
+	ch, ok := d.waits[approvalID]
+	if !ok {
+		ch = make(chan bool, 1)
+		d.waits[approvalID] = ch
+	}
+	ch <- approved
 }
 
 func TestCreateTaskDispatchesAndReturnsID(t *testing.T) {

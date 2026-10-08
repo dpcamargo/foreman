@@ -85,6 +85,39 @@ func TestControlStoreApprovalNotFound(t *testing.T) {
 	}
 }
 
+func TestPendingApprovalForTask(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t)
+	taskID := newTestTaskForControl(t, ctx, s)
+
+	if _, err := s.PendingApprovalForTask(ctx, taskID); err == nil {
+		t.Error("expected an error when there is no pending approval yet")
+	}
+
+	created, err := s.CreateApproval(ctx, control.Approval{
+		TaskID: taskID, Kind: "spec", Question: "approve?", Options: []string{"approve", "reject"},
+		SubjectSHA256: "deadbeef", Nonce: "noncevalue", Status: "pending",
+	})
+	if err != nil {
+		t.Fatalf("CreateApproval: %v", err)
+	}
+
+	got, err := s.PendingApprovalForTask(ctx, taskID)
+	if err != nil {
+		t.Fatalf("PendingApprovalForTask: %v", err)
+	}
+	if got.ID != created.ID {
+		t.Errorf("expected %s, got %s", created.ID, got.ID)
+	}
+
+	if err := s.ResolveApproval(ctx, created.ID, "approved", "approve", ""); err != nil {
+		t.Fatalf("ResolveApproval: %v", err)
+	}
+	if _, err := s.PendingApprovalForTask(ctx, taskID); err == nil {
+		t.Error("expected an error once the approval is resolved (no longer pending)")
+	}
+}
+
 func TestControlStoreAllowlist(t *testing.T) {
 	ctx := context.Background()
 	s := openTest(t)
@@ -105,6 +138,17 @@ func TestControlStoreAllowlist(t *testing.T) {
 	}
 	if allowed {
 		t.Error("expected 99999 to be rejected")
+	}
+
+	if err := s.AddAllowedUser(ctx, 67890, "second operator"); err != nil {
+		t.Fatalf("AddAllowedUser second: %v", err)
+	}
+	ids, err := s.AllowedUserIDs(ctx)
+	if err != nil {
+		t.Fatalf("AllowedUserIDs: %v", err)
+	}
+	if len(ids) != 2 {
+		t.Fatalf("expected 2 allowed user ids, got %v", ids)
 	}
 }
 

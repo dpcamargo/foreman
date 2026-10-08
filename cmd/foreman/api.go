@@ -23,7 +23,7 @@ func toTaskAPIResponse(t task.Task) taskAPIResponse {
 // newAPIMux builds the local API's HTTP routes (contracts/local-api.md): the same
 // create/status/list semantics /task, /status, and /tasks give Telegram, for the local `fm`
 // CLI talking over the unix socket.
-func newAPIMux(store taskStore, sup dispatcher) *http.ServeMux {
+func newAPIMux(store fullStore, sup dispatcherApprovals) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/v1/ping", func(w http.ResponseWriter, r *http.Request) {
@@ -54,6 +54,7 @@ func newAPIMux(store taskStore, sup dispatcher) *http.ServeMux {
 				writeJSONError(w, http.StatusInternalServerError, err.Error())
 				return
 			}
+			tasks = nonTerminalTasks(tasks)
 			out := make([]taskAPIResponse, len(tasks))
 			for i, t := range tasks {
 				out[i] = toTaskAPIResponse(t)
@@ -80,6 +81,32 @@ func newAPIMux(store taskStore, sup dispatcher) *http.ServeMux {
 			return
 		}
 		writeJSON(w, http.StatusOK, toTaskAPIResponse(tsk))
+	})
+
+	mux.HandleFunc("/v1/approvals/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || !strings.HasSuffix(r.URL.Path, "/respond") {
+			writeJSONError(w, http.StatusNotFound, "not found")
+			return
+		}
+		id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v1/approvals/"), "/respond")
+		if id == "" {
+			writeJSONError(w, http.StatusBadRequest, "approval id required")
+			return
+		}
+		var body struct {
+			Nonce    string `json:"nonce"`
+			Response string `json:"response"` // "approve" or "reject"
+			Reason   string `json:"reason"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSONError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+			return
+		}
+		if err := resolveApproval(r.Context(), store, sup, id, body.Nonce, body.Response, body.Reason); err != nil {
+			writeJSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": body.Response})
 	})
 
 	return mux

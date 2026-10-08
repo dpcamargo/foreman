@@ -17,6 +17,7 @@ type Supervisor struct {
 	mu      sync.Mutex
 	cancels map[string]context.CancelFunc
 	paused  map[string]bool
+	waits   map[string]chan bool // keyed by approval id (research.md R7)
 }
 
 // NewSupervisor builds the Engine cfg wires PauseCheck into (so a single shared Engine
@@ -30,6 +31,7 @@ func NewSupervisor(cfg Config, maxConcurrent int) *Supervisor {
 		sem:     make(chan struct{}, maxConcurrent),
 		cancels: make(map[string]context.CancelFunc),
 		paused:  make(map[string]bool),
+		waits:   make(map[string]chan bool),
 	}
 	cfg.PauseCheck = s.isPaused
 	s.eng = New(cfg)
@@ -108,4 +110,44 @@ func (s *Supervisor) isPaused(taskID string) bool {
 // daemon never calls this (dispatch is meant to run indefinitely).
 func (s *Supervisor) Wait() {
 	s.wg.Wait()
+}
+
+// WaitForApproval blocks until ResolveApproval is called for approvalID, or ctx is
+// cancelled (e.g. the whole dispatch was cancelled while waiting on a human). It is the
+// Supervisor-side half of research.md R7's ApprovalGate hook: the daemon's ApprovalGate
+// closure creates the Approval row and sends the Telegram/local-API request, then calls
+// this to block; a Telegram callback or a local API respond call elsewhere calls
+// ResolveApproval to unblock it. Only one waiter may be registered per approvalID at a time.
+func (s *Supervisor) WaitForApproval(ctx context.Context, approvalID string) (bool, error) {
+	ch := make(chan bool, 1)
+	s.mu.Lock()
+	s.waits[approvalID] = ch
+	s.mu.Unlock()
+
+	defer func() {
+		s.mu.Lock()
+		delete(s.waits, approvalID)
+		s.mu.Unlock()
+	}()
+
+	select {
+	case approved := <-ch:
+		return approved, nil
+	case <-ctx.Done():
+		return false, ctx.Err()
+	}
+}
+
+// ResolveApproval wakes a pending WaitForApproval(ctx, approvalID) call with the given
+// decision. It is a no-op if no waiter is registered (e.g. a stale or duplicate callback
+// after the gate already timed out) — callers that need to tell the difference should check
+// the Approval row's status first (contracts/approval-nonce.md: only a pending approval may
+// be resolved).
+func (s *Supervisor) ResolveApproval(approvalID string, approved bool) {
+	s.mu.Lock()
+	ch, ok := s.waits[approvalID]
+	s.mu.Unlock()
+	if ok {
+		ch <- approved
+	}
 }

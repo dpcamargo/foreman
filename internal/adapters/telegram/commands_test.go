@@ -52,6 +52,24 @@ func TestParseCommand(t *testing.T) {
 			wantCmd: telegram.Command{Name: "status", Args: []string{"tsk_123"}},
 		},
 		{
+			name:    "reject with id and reason",
+			text:    "/reject tsk_123 tests still failing",
+			wantOK:  true,
+			wantCmd: telegram.Command{Name: "reject", Args: []string{"tsk_123", "tests still failing"}},
+		},
+		{
+			name:    "reject with id but no reason",
+			text:    "/reject tsk_123",
+			wantOK:  true,
+			wantCmd: telegram.Command{Name: "reject", Args: []string{"tsk_123"}},
+		},
+		{
+			name:    "answer with id and text",
+			text:    "/answer tsk_123 use the v2 API",
+			wantOK:  true,
+			wantCmd: telegram.Command{Name: "answer", Args: []string{"tsk_123", "use the v2 API"}},
+		},
+		{
 			name:   "not a command",
 			text:   "hello there",
 			wantOK: false,
@@ -127,5 +145,17 @@ func TestDispatcherAllowsPrivateAllowlistedSender(t *testing.T) {
 	}
 	if !allowed {
 		t.Error("expected a private, allowlisted sender to be allowed")
+	}
+}
+
+// TestFreeTextReplyIsTheFixedContractString locks in the exact wording
+// contracts/telegram-commands.md specifies: free text is never parsed for intent, and the
+// reply never varies by phrasing (FR-006).
+func TestFreeTextReplyIsTheFixedContractString(t *testing.T) {
+	if telegram.FreeTextReply != "chat isn't enabled yet; use /commands" {
+		t.Errorf("unexpected FreeTextReply: %q", telegram.FreeTextReply)
+	}
+	if _, ok := telegram.ParseCommand("approve everything"); ok {
+		t.Error("free text must never parse as a command, no matter the phrasing")
 	}
 }

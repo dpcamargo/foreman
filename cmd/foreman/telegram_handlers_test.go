@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/dpcamargo/foreman/internal/adapters/telegram"
+	"github.com/dpcamargo/foreman/internal/core/control"
 )
 
 type fakeSender struct {
@@ -89,7 +90,98 @@ func TestHandleUpdateNotACommand(t *testing.T) {
 		Text: "hello there",
 	}}
 	handleUpdate(context.Background(), store, &fakeDispatcher{}, sender, u)
-	if len(sender.sent) != 1 || !strings.Contains(sender.sent[0].Text, "/help") {
-		t.Fatalf("expected a hint about /help, got %+v", sender.sent)
+	if len(sender.sent) != 1 || sender.sent[0].Text != telegram.FreeTextReply {
+		t.Fatalf("expected the fixed free-text reply, got %+v", sender.sent)
+	}
+}
+
+func TestHandleUpdateRejectRequiresReason(t *testing.T) {
+	store := newFakeTaskStore()
+	store.approvals = map[string]control.Approval{
+		"apv_1": {ID: "apv_1", TaskID: "tsk_1", Nonce: "noncevalue", Status: "pending", SubjectSHA256: "deadbeef"},
+	}
+	sender := &fakeSender{}
+	disp := &fakeDispatcher{}
+
+	u := telegram.Update{Message: &telegram.Message{
+		Chat: telegram.Chat{ID: 42, Type: "private"},
+		Text: "/reject tsk_1",
+	}}
+	handleUpdate(context.Background(), store, disp, sender, u)
+
+	if len(sender.sent) != 1 || !strings.Contains(sender.sent[0].Text, "reason is required") {
+		t.Fatalf("expected a prompt for a reason, got %+v", sender.sent)
+	}
+	if store.approvals["apv_1"].Status != "pending" {
+		t.Error("expected the approval to remain pending without a reason")
+	}
+}
+
+func TestHandleUpdateRejectWithReasonResolves(t *testing.T) {
+	store := newFakeTaskStore()
+	store.approvals = map[string]control.Approval{
+		"apv_1": {ID: "apv_1", TaskID: "tsk_1", Nonce: "noncevalue", Status: "pending", SubjectSHA256: "deadbeef"},
+	}
+	sender := &fakeSender{}
+	disp := &fakeDispatcher{}
+
+	u := telegram.Update{Message: &telegram.Message{
+		Chat: telegram.Chat{ID: 42, Type: "private"},
+		Text: "/reject tsk_1 flaky test",
+	}}
+	handleUpdate(context.Background(), store, disp, sender, u)
+
+	if len(sender.sent) != 1 || !strings.Contains(sender.sent[0].Text, "rejected") {
+		t.Fatalf("expected a 'rejected' reply, got %+v", sender.sent)
+	}
+	got := store.approvals["apv_1"]
+	if got.Status != "rejected" || got.Reason != "flaky test" {
+		t.Errorf("expected a resolved+reasoned approval, got %+v", got)
+	}
+}
+
+func TestHandleCallbackQueryApprove(t *testing.T) {
+	store := newFakeTaskStore()
+	store.approvals = map[string]control.Approval{
+		"apv_1": {ID: "apv_1", TaskID: "tsk_1", Nonce: "noncevalue", Status: "pending", SubjectSHA256: "deadbeef"},
+	}
+	sender := &fakeSender{}
+	disp := &fakeDispatcher{}
+
+	u := telegram.Update{CallbackQuery: &telegram.CallbackQuery{
+		ID:      "cbq_1",
+		Message: &telegram.Message{Chat: telegram.Chat{ID: 42, Type: "private"}},
+		Data:    "apv_1|noncevalue|approve",
+	}}
+	handleUpdate(context.Background(), store, disp, sender, u)
+
+	if len(sender.sent) != 1 || sender.sent[0].Text != "approved" {
+		t.Fatalf("expected an 'approved' reply, got %+v", sender.sent)
+	}
+	if store.approvals["apv_1"].Status != "approved" {
+		t.Errorf("expected the approval resolved, got %+v", store.approvals["apv_1"])
+	}
+}
+
+func TestHandleCallbackQueryWrongNonceRejected(t *testing.T) {
+	store := newFakeTaskStore()
+	store.approvals = map[string]control.Approval{
+		"apv_1": {ID: "apv_1", TaskID: "tsk_1", Nonce: "noncevalue", Status: "pending", SubjectSHA256: "deadbeef"},
+	}
+	sender := &fakeSender{}
+	disp := &fakeDispatcher{}
+
+	u := telegram.Update{CallbackQuery: &telegram.CallbackQuery{
+		ID:      "cbq_1",
+		Message: &telegram.Message{Chat: telegram.Chat{ID: 42, Type: "private"}},
+		Data:    "apv_1|wrong-nonce|approve",
+	}}
+	handleUpdate(context.Background(), store, disp, sender, u)
+
+	if store.approvals["apv_1"].Status != "pending" {
+		t.Errorf("expected the approval to remain pending after a wrong-nonce tap, got %+v", store.approvals["apv_1"])
+	}
+	if len(sender.sent) != 1 || !strings.Contains(sender.sent[0].Text, "could not apply") {
+		t.Fatalf("expected an error reply, got %+v", sender.sent)
 	}
 }

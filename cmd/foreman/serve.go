@@ -58,7 +58,26 @@ func serve(ctx context.Context, e env, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "foreman: wire engine: %v\n", err)
 		return exitInfra
 	}
-	sup := engine.NewSupervisor(engineCfg, 2)
+
+	var telegramClient *telegram.Client
+	var sender messageSender // left as a true nil interface if Telegram isn't configured,
+	// never a non-nil interface wrapping a nil *telegram.Client (a classic Go footgun that
+	// would make requestSpecApproval's "if sender != nil" check pass incorrectly)
+	if e.TelegramToken != "" {
+		telegramClient = telegram.NewClient(e.TelegramToken)
+		sender = telegramClient
+	}
+
+	// sup doesn't exist yet — NewSupervisor builds the Engine from engineCfg immediately
+	// below — so the ApprovalGate closure captures this variable by reference rather than
+	// by value. By the time the closure actually runs (during a later Dispatch call, well
+	// after NewSupervisor returns), sup is already assigned (see approvals.go's doc
+	// comment on requestSpecApproval).
+	var sup *engine.Supervisor
+	engineCfg.ApprovalGate = func(ctx context.Context, taskID string, spec engine.TaskSpec) (bool, error) {
+		return requestSpecApproval(ctx, store, sup, sender, taskID, spec)
+	}
+	sup = engine.NewSupervisor(engineCfg, 2)
 
 	mux := newAPIMux(store, sup)
 	api, err := localapi.New(e.socketPath(), mux)
@@ -69,9 +88,8 @@ func serve(ctx context.Context, e env, stdout, stderr io.Writer) int {
 	serveErrCh := make(chan error, 1)
 	go func() { serveErrCh <- api.Serve() }()
 
-	if e.TelegramToken != "" {
-		client := telegram.NewClient(e.TelegramToken)
-		go pollTelegram(ctx, client, store, sup)
+	if telegramClient != nil {
+		go pollTelegram(ctx, telegramClient, store, sup)
 	} else {
 		fmt.Fprintln(stdout, "foreman: TELEGRAM_BOT_TOKEN not set; local API only")
 	}

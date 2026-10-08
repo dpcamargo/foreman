@@ -26,7 +26,7 @@ type Config struct {
 	// spec (Feature 003's Telegram/local-API control plane). nil means no gate at all —
 	// fm run (Feature 002) never sets this field, so its behavior is unchanged
 	// (specs/003-daemon-telegram-control/research.md R7).
-	ApprovalGate func(ctx context.Context, spec TaskSpec) (approved bool, err error)
+	ApprovalGate func(ctx context.Context, taskID string, spec TaskSpec) (approved bool, err error)
 	// PauseCheck, if set, is checked once at the top of every ladder iteration (before the
 	// next implement attempt starts). A true result stops the ladder without killing the
 	// attempt in flight, leaving the task running for a later resume. nil is a no-op, for
@@ -119,7 +119,7 @@ func (e *Engine) RunTask(ctx context.Context, params RunParams) (TaskReport, err
 	// Spec-approval gate (research.md R7): nil is a no-op, preserving Feature 002's
 	// behavior byte-for-byte for callers (fm run) that never set it.
 	if e.cfg.ApprovalGate != nil {
-		approved, err := e.cfg.ApprovalGate(ctx, spec)
+		approved, err := e.cfg.ApprovalGate(ctx, tsk.ID, spec)
 		if err != nil {
 			return TaskReport{}, fmt.Errorf("approval gate: %w", err)
 		}

@@ -79,6 +79,21 @@ func formatTaskStatus(tsk task.Task, nodes []task.Node) string {
 	return strings.TrimRight(b.String(), "\n")
 }
 
+// nonTerminalTasks filters tasks down to those still in play — pending, running,
+// blocked_human, or paused — matching /tasks and GET /v1/tasks's documented behavior
+// (contracts/telegram-commands.md, contracts/local-api.md: "Lists non-terminal tasks").
+func nonTerminalTasks(tasks []task.Task) []task.Task {
+	out := make([]task.Task, 0, len(tasks))
+	for _, t := range tasks {
+		switch t.Status {
+		case task.StatusSucceeded, task.StatusFailed, task.StatusCancelled:
+			continue
+		}
+		out = append(out, t)
+	}
+	return out
+}
+
 // formatTaskList renders a /tasks reply: one line per task, newest first (as RecentTasks
 // already orders them).
 func formatTaskList(tasks []task.Task) string {

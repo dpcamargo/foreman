@@ -137,9 +137,9 @@ one merge call — three operations, not a general-purpose GitHub client's full 
 
 **Decision**: Feature 002's `engine.RunTask` (spec → implement → verify → review, one
 synchronous call) gains exactly one new, optional `Config` field:
-`ApprovalGate func(ctx context.Context, spec TaskSpec) (approved bool, err error)`. It is called
-once, synchronously, immediately after `ValidateTaskSpec` succeeds and before the implement
-ladder starts. When `nil` (Feature 002's `fm run` never sets it), behavior is byte-for-byte
+`ApprovalGate func(ctx context.Context, taskID string, spec TaskSpec) (approved bool, err error)`.
+It is called once, synchronously, immediately after `ValidateTaskSpec` succeeds and before
+the implement ladder starts. When `nil` (Feature 002's `fm run` never sets it), behavior is byte-for-byte
 unchanged — this is the one correction to plan.md's Constitution Check, which otherwise
 correctly says Feature 002's engine logic is untouched. When the daemon sets it, the function
 blocks until the Supervisor's approval bookkeeping resolves; the actual waiting (a channel or

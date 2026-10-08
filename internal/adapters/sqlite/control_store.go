@@ -99,6 +99,22 @@ func (s *Store) ResolveApproval(ctx context.Context, id, status, response, reaso
 	})
 }
 
+// PendingApprovalForTask returns taskID's pending approval (the one request/text commands
+// like "/reject <task_id> <reason>" resolve by task id, trusting the already-passed
+// allowlist+private-chat check rather than requiring a nonce the user never sees).
+func (s *Store) PendingApprovalForTask(ctx context.Context, taskID string) (control.Approval, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT id FROM approvals WHERE task_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 1;`, taskID)
+	var id string
+	if err := row.Scan(&id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return control.Approval{}, fmt.Errorf("no pending approval for task %s: %w", taskID, ErrNotFoundControl)
+		}
+		return control.Approval{}, fmt.Errorf("query pending approval: %w", err)
+	}
+	return s.Approval(ctx, id)
+}
+
 // AddAllowedUser adds a Telegram user id to the allowlist (spec FR-003).
 func (s *Store) AddAllowedUser(ctx context.Context, userID int64, label string) error {
 	_, err := s.db.ExecContext(ctx, `
@@ -119,6 +135,28 @@ func (s *Store) IsAllowedUser(ctx context.Context, userID int64) (bool, error) {
 		return false, fmt.Errorf("query allowlist: %w", err)
 	}
 	return count > 0, nil
+}
+
+// AllowedUserIDs returns every allowlisted Telegram user id, used to broadcast an approval
+// request to whichever operator(s) the daemon is configured for.
+func (s *Store) AllowedUserIDs(ctx context.Context) ([]int64, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT telegram_user_id FROM allowlist;`)
+	if err != nil {
+		return nil, fmt.Errorf("query allowlist ids: %w", err)
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan allowlist id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate allowlist ids: %w", err)
+	}
+	return ids, nil
 }
 
 // OutboxCursor returns subscriber's last-seen event id, 0 for a subscriber never seen before.

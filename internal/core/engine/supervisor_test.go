@@ -178,6 +178,52 @@ func TestSupervisorPauseGracefulStopsBeforeNextAttempt(t *testing.T) {
 	}
 }
 
+func TestSupervisorApprovalGateBlocksUntilResolved(t *testing.T) {
+	store := newFakeStore()
+	impl := &fakeImplementer{family: "openai", route: "codex/default"}
+	gateCalledCh := make(chan struct{})
+
+	var sup *engine.Supervisor
+	sup = engine.NewSupervisor(engine.Config{
+		Store:        store,
+		Specifier:    &fakeSpecifier{},
+		Verifier:     &fakeVerifier{shouldPass: true},
+		Implementers: map[string]engine.Implementer{"openai": impl},
+		Reviewers:    map[string]engine.Reviewer{"anthropic": &fakeReviewer{family: "anthropic", route: "hermes/claude", approved: true}},
+		Cloner:       &fakeCloner{},
+		FileExists:   func(path string) bool { return true },
+		ApprovalGate: func(ctx context.Context, taskID string, spec engine.TaskSpec) (bool, error) {
+			close(gateCalledCh)
+			return sup.WaitForApproval(ctx, "apv_"+taskID)
+		},
+	}, 2)
+
+	tsk := newTestTask("tsk_reject")
+	sup.Dispatch(context.Background(), engine.RunParams{Task: tsk, Visible: fstest.MapFS{}, Hidden: fstest.MapFS{}})
+
+	select {
+	case <-gateCalledCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("approval gate was never called")
+	}
+
+	// The ladder must not have started yet: the gate is still blocking.
+	if impl.attempts != 0 {
+		t.Errorf("expected 0 implement attempts before the approval resolves, got %d", impl.attempts)
+	}
+
+	sup.ResolveApproval("apv_tsk_reject", false) // rejected
+	sup.Wait()
+
+	if impl.attempts != 0 {
+		t.Errorf("expected the ladder to never run after a rejected approval, got %d attempts", impl.attempts)
+	}
+	got := store.tasks["tsk_reject"]
+	if got.Status != task.StatusFailed {
+		t.Errorf("expected task status failed after a rejected approval, got %s", got.Status)
+	}
+}
+
 // selfPausingImplementer calls onCall() synchronously before returning a failing result, so
 // the test can inject a PauseGraceful call deterministically between attempt 1 and the
 // ladder's next-iteration pause check, without relying on real concurrency timing.
@@ -206,7 +252,7 @@ func TestSupervisorResumesAfterApprovalGateReturns(t *testing.T) {
 		Reviewers:    map[string]engine.Reviewer{"anthropic": &fakeReviewer{family: "anthropic", route: "hermes/claude", approved: true}},
 		Cloner:       &fakeCloner{},
 		FileExists:   func(path string) bool { return true },
-		ApprovalGate: func(ctx context.Context, spec engine.TaskSpec) (bool, error) {
+		ApprovalGate: func(ctx context.Context, taskID string, spec engine.TaskSpec) (bool, error) {
 			gateCalledOnce.Do(func() { close(gateCalledCh) })
 			<-gateReleaseCh
 			return true, nil
