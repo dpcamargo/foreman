@@ -4,9 +4,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 // Exit codes, same convention as cmd/fm (specs/001-evaluation-harness/contracts/cli.md).
@@ -23,7 +26,17 @@ func main() {
 
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		return serve(stdout, stderr)
+		e, err := loadEnv(os.Getenv, os.UserHomeDir)
+		if err != nil {
+			fmt.Fprintf(stderr, "foreman: %v\n", err)
+			return exitUsage
+		}
+		// SIGTERM/SIGINT stop accepting new dispatch and exit cleanly, so launchd's
+		// KeepAlive restarts into a startup reconciler that finds a consistent state
+		// (deploy/launchd/com.foreman.plist, FR-010).
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		return serve(ctx, e, stdout, stderr)
 	}
 	switch args[0] {
 	case "help", "-h", "--help":
@@ -34,13 +47,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		usage(stderr)
 		return exitUsage
 	}
-}
-
-// serve is wired in later tasks (T019 onward): opens the store, runs the startup
-// reconciler, starts the Supervisor, the Telegram client, and the local API listener.
-func serve(stdout, stderr io.Writer) int {
-	fmt.Fprintln(stderr, "foreman: serve is not wired yet")
-	return exitInfra
 }
 
 func usage(w io.Writer) {
