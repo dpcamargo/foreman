@@ -1,0 +1,330 @@
+package engine
+
+import (
+	"context"
+	"fmt"
+	"io/fs"
+	"time"
+
+	"github.com/dpcamargo/foreman/internal/core/task"
+)
+
+type Config struct {
+	Store         task.TaskStore
+	Specifier     Specifier
+	Verifier      Verifier
+	Implementers  map[string]Implementer // keyed by family ("openai", "anthropic")
+	Reviewers     map[string]Reviewer    // keyed by family ("openai", "anthropic")
+	Cloner        WorkspaceCloner
+	FileExists    func(path string) bool
+	MaxRung       int
+	DefaultFamily string
+	PID           int
+	PIDStartedAt  string
+}
+
+type Engine struct {
+	cfg Config
+}
+
+func New(cfg Config) *Engine {
+	if cfg.MaxRung <= 0 {
+		cfg.MaxRung = 3
+	}
+	if cfg.DefaultFamily == "" {
+		cfg.DefaultFamily = "openai"
+	}
+	return &Engine{cfg: cfg}
+}
+
+type RunParams struct {
+	Task        task.Task
+	Visible     fs.FS
+	Hidden      fs.FS
+	ProjectYAML []byte
+	Timeout     time.Duration
+}
+
+func (e *Engine) RunTask(ctx context.Context, params RunParams) (TaskReport, error) {
+	now := time.Now().UTC()
+	tsk := params.Task
+	if err := tsk.Validate(); err != nil {
+		return TaskReport{}, err
+	}
+
+	var nodes []task.Node
+	existing, err := e.cfg.Store.Task(ctx, tsk.ID)
+	if err == nil && existing.ID != "" {
+		tsk = existing
+		nodes, err = e.cfg.Store.NodesForTask(ctx, tsk.ID)
+		if err != nil {
+			return TaskReport{}, fmt.Errorf("load nodes for task: %w", err)
+		}
+	} else {
+		// Initialize linear nodes in database
+		nodes = task.NewLinearNodes(tsk.ID, now)
+		createdTask, err := e.cfg.Store.CreateTask(ctx, tsk, nodes)
+		if err != nil {
+			return TaskReport{}, fmt.Errorf("create task in store: %w", err)
+		}
+		tsk = createdTask
+	}
+
+	if tsk.Status != task.StatusRunning {
+		if err := tsk.Start(now); err != nil {
+			return TaskReport{}, fmt.Errorf("start task: %w", err)
+		}
+		_ = e.cfg.Store.UpdateTaskStatus(ctx, tsk.ID, tsk.Status, nodes[0].ID)
+	}
+
+	// 1. SPEC NODE
+	specNode := nodes[0]
+	_ = e.cfg.Store.UpdateNodeStatus(ctx, specNode.ID, task.NodeStatusRunning)
+	specWorkspace, err := e.cfg.Cloner.PrepareWorkspace(ctx, tsk.ID, task.NewID("spec"), tsk.RepoURL, tsk.BaseCommit)
+	if err != nil {
+		_ = e.cfg.Store.UpdateNodeStatus(ctx, specNode.ID, task.NodeStatusFailed)
+		_ = e.cfg.Store.UpdateTaskStatus(ctx, tsk.ID, task.StatusFailed, specNode.ID)
+		return TaskReport{}, fmt.Errorf("prepare spec workspace: %w", err)
+	}
+	spec, err := e.cfg.Specifier.Specify(ctx, SpecInput{
+		RequestText: tsk.RequestText,
+		RepoURL:     tsk.RepoURL,
+		BaseCommit:  tsk.BaseCommit,
+		Workspace:   specWorkspace,
+	})
+	_ = e.cfg.Cloner.DestroyWorkspace(context.WithoutCancel(ctx), specWorkspace)
+	if err != nil {
+		_ = e.cfg.Store.UpdateNodeStatus(ctx, specNode.ID, task.NodeStatusFailed)
+		_ = e.cfg.Store.UpdateTaskStatus(ctx, tsk.ID, task.StatusFailed, specNode.ID)
+		return TaskReport{}, fmt.Errorf("specifier failed: %w", err)
+	}
+	if err := ValidateTaskSpec(spec, e.cfg.FileExists); err != nil {
+		_ = e.cfg.Store.UpdateNodeStatus(ctx, specNode.ID, task.NodeStatusFailed)
+		_ = e.cfg.Store.UpdateTaskStatus(ctx, tsk.ID, task.StatusFailed, specNode.ID)
+		return TaskReport{}, fmt.Errorf("spec validation failed: %w", err)
+	}
+	_ = e.cfg.Store.UpdateNodeStatus(ctx, specNode.ID, task.NodeStatusSucceeded)
+
+	// 2. IMPLEMENT & VERIFY LOOP
+	implNode := nodes[1]
+	verifyNode := nodes[2]
+	_ = e.cfg.Store.UpdateNodeStatus(ctx, implNode.ID, task.NodeStatusRunning)
+
+	currentRung := 1
+	currentFamily := e.cfg.DefaultFamily
+	attemptNum := 1
+	totalTokens := 0
+	startTime := time.Now()
+	guard := NewLoopGuard()
+	var lastPatch []byte
+	var lastEvidence *FailureEvidence
+	var verified bool
+
+	for attemptNum <= 10 {
+		impl, ok := e.cfg.Implementers[currentFamily]
+		if !ok {
+			return TaskReport{}, fmt.Errorf("no implementer configured for family %s", currentFamily)
+		}
+
+		runID := task.NewID("run")
+		run := task.Run{
+			ID:           runID,
+			TaskID:       tsk.ID,
+			NodeID:       implNode.ID,
+			AttemptNum:   attemptNum,
+			LadderRung:   currentRung,
+			Route:        impl.Route(),
+			ModelFamily:  impl.Family(),
+			Status:       task.RunRunning,
+			PID:          e.cfg.PID,
+			PIDStartedAt: e.cfg.PIDStartedAt,
+			StartedAt:    time.Now().UTC(),
+		}
+		_ = e.cfg.Store.RecordTaskRun(ctx, run)
+
+		ws, err := e.cfg.Cloner.PrepareWorkspace(ctx, tsk.ID, runID, tsk.RepoURL, tsk.BaseCommit)
+		if err != nil {
+			_ = e.cfg.Store.FinishTaskRun(ctx, runID, task.RunInfraError, task.FailureInfra, "workspace_prep_failed")
+			return TaskReport{}, fmt.Errorf("prepare workspace: %w", err)
+		}
+
+		implRes, err := impl.Implement(ctx, ImplementInput{
+			TaskID:     tsk.ID,
+			NodeID:     implNode.ID,
+			Attempt:    attemptNum,
+			LadderRung: currentRung,
+			Spec:       spec,
+			Workspace:  ws,
+			Evidence:   lastEvidence,
+		})
+		_ = e.cfg.Cloner.DestroyWorkspace(ctx, ws)
+
+		totalTokens += implRes.TokensBillable
+
+		if err != nil || implRes.Status != task.RunSucceeded {
+			errStr := ""
+			if err != nil {
+				errStr = err.Error()
+			} else {
+				errStr = implRes.Error
+			}
+			cls := ClassifyFailure(VerifyReport{}, errStr)
+			_ = e.cfg.Store.FinishTaskRun(ctx, runID, task.RunFailed, cls, "")
+			decision := DecideLadderTransition(currentRung, cls, false, currentFamily, impl.Route())
+			if decision.BlockedHuman || decision.NextRung > e.cfg.MaxRung {
+				_ = tsk.BlockHuman(time.Now().UTC())
+				_ = e.cfg.Store.UpdateTaskStatus(ctx, tsk.ID, task.StatusBlockedHuman, implNode.ID)
+				_ = e.cfg.Store.UpdateNodeStatus(ctx, implNode.ID, task.NodeStatusFailed)
+				return TaskReport{
+					TaskID:      tsk.ID,
+					Status:      task.StatusBlockedHuman,
+					RepoURL:     tsk.RepoURL,
+					BaseCommit:  tsk.BaseCommit,
+					RequestText: tsk.RequestText,
+					Attempts:    attemptNum,
+					LadderRung:  currentRung,
+					TokensTotal: totalTokens,
+					WallTotal:   time.Since(startTime),
+					SpecSummary: spec.Summary,
+					CreatedAt:   now,
+				}, nil
+			}
+			currentRung = decision.NextRung
+			attemptNum++
+			continue
+		}
+
+		// Verification
+		_ = e.cfg.Store.UpdateNodeStatus(ctx, verifyNode.ID, task.NodeStatusRunning)
+		vReport, err := e.cfg.Verifier.Verify(ctx, VerifyInput{
+			TaskID:      tsk.ID,
+			RepoURL:     tsk.RepoURL,
+			BaseCommit:  tsk.BaseCommit,
+			Patch:       implRes.Patch,
+			Visible:     params.Visible,
+			Hidden:      params.Hidden,
+			ProjectYAML: params.ProjectYAML,
+		})
+		if err != nil {
+			_ = e.cfg.Store.FinishTaskRun(ctx, runID, task.RunInfraError, task.FailureInfra, err.Error())
+			return TaskReport{}, fmt.Errorf("verifier infrastructure error: %w", err)
+		}
+
+		if vReport.Passed {
+			_ = e.cfg.Store.FinishTaskRun(ctx, runID, task.RunSucceeded, "", "")
+			_ = e.cfg.Store.UpdateNodeStatus(ctx, implNode.ID, task.NodeStatusSucceeded)
+			_ = e.cfg.Store.UpdateNodeStatus(ctx, verifyNode.ID, task.NodeStatusSucceeded)
+			lastPatch = implRes.Patch
+			verified = true
+			break
+		}
+
+		// Verification failed
+		cls := ClassifyFailure(vReport, "")
+		sig := ComputeFailureSignature(vReport.FailingTests, vReport.ErrorSummary)
+		guardTriggered, _ := guard.Check(sig, implRes.DiffHash, len(vReport.FailingTests))
+		guard.Record(sig, implRes.DiffHash, len(vReport.FailingTests))
+		_ = e.cfg.Store.FinishTaskRun(ctx, runID, task.RunFailed, cls, sig)
+
+		decision := DecideLadderTransition(currentRung, cls, guardTriggered, currentFamily, impl.Route())
+		if decision.BlockedHuman || decision.NextRung > e.cfg.MaxRung {
+			_ = tsk.BlockHuman(time.Now().UTC())
+			_ = e.cfg.Store.UpdateTaskStatus(ctx, tsk.ID, task.StatusBlockedHuman, verifyNode.ID)
+			_ = e.cfg.Store.UpdateNodeStatus(ctx, verifyNode.ID, task.NodeStatusFailed)
+			return TaskReport{
+				TaskID:      tsk.ID,
+				Status:      task.StatusBlockedHuman,
+				RepoURL:     tsk.RepoURL,
+				BaseCommit:  tsk.BaseCommit,
+				RequestText: tsk.RequestText,
+				Attempts:    attemptNum,
+				LadderRung:  currentRung,
+				TokensTotal: totalTokens,
+				WallTotal:   time.Since(startTime),
+				SpecSummary: spec.Summary,
+				CreatedAt:   now,
+			}, nil
+		}
+
+		currentRung = decision.NextRung
+		if decision.SwitchFamily {
+			currentFamily = decision.TargetFamily
+			lastEvidence = nil
+		} else {
+			lastEvidence = &FailureEvidence{
+				FailingTests: vReport.FailingTests,
+				ErrorSummary: vReport.ErrorSummary,
+				FullOutput:   vReport.FullOutput,
+			}
+		}
+		attemptNum++
+	}
+
+	if !verified {
+		_ = tsk.BlockHuman(time.Now().UTC())
+		_ = e.cfg.Store.UpdateTaskStatus(ctx, tsk.ID, task.StatusBlockedHuman, implNode.ID)
+		return TaskReport{TaskID: tsk.ID, Status: task.StatusBlockedHuman}, nil
+	}
+
+	// 3. REVIEW NODE
+	reviewNode := nodes[3]
+	_ = e.cfg.Store.UpdateNodeStatus(ctx, reviewNode.ID, task.NodeStatusRunning)
+	reviewerFamily := otherFamily(currentFamily)
+	reviewer, ok := e.cfg.Reviewers[reviewerFamily]
+	if !ok {
+		return TaskReport{}, fmt.Errorf("no reviewer configured for family %s", reviewerFamily)
+	}
+	if err := ValidateReviewerFamily(currentFamily, reviewerFamily); err != nil {
+		return TaskReport{}, err
+	}
+
+	revRes, err := reviewer.Review(ctx, ReviewInput{
+		TaskID: tsk.ID,
+		Spec:   spec,
+		Patch:  lastPatch,
+	})
+	if err != nil {
+		return TaskReport{}, fmt.Errorf("review execution failed: %w", err)
+	}
+	gatedReview := GateReviewFindings(revRes)
+	if !gatedReview.Approved {
+		_ = e.cfg.Store.UpdateNodeStatus(ctx, reviewNode.ID, task.NodeStatusFailed)
+		_ = tsk.BlockHuman(time.Now().UTC())
+		_ = e.cfg.Store.UpdateTaskStatus(ctx, tsk.ID, task.StatusBlockedHuman, reviewNode.ID)
+		return TaskReport{
+			TaskID:       tsk.ID,
+			Status:       task.StatusBlockedHuman,
+			RepoURL:      tsk.RepoURL,
+			BaseCommit:   tsk.BaseCommit,
+			RequestText:  tsk.RequestText,
+			Attempts:     attemptNum,
+			LadderRung:   currentRung,
+			TokensTotal:  totalTokens,
+			WallTotal:    time.Since(startTime),
+			SpecSummary:  spec.Summary,
+			ReviewStatus: "changes_requested",
+			Findings:     gatedReview.Findings,
+			CreatedAt:    now,
+		}, nil
+	}
+
+	_ = e.cfg.Store.UpdateNodeStatus(ctx, reviewNode.ID, task.NodeStatusSucceeded)
+	_ = tsk.Complete(time.Now().UTC())
+	_ = e.cfg.Store.UpdateTaskStatus(ctx, tsk.ID, task.StatusSucceeded, reviewNode.ID)
+
+	return TaskReport{
+		TaskID:       tsk.ID,
+		Status:       task.StatusSucceeded,
+		RepoURL:      tsk.RepoURL,
+		BaseCommit:   tsk.BaseCommit,
+		RequestText:  tsk.RequestText,
+		Attempts:     attemptNum,
+		LadderRung:   currentRung,
+		TokensTotal:  totalTokens,
+		WallTotal:    time.Since(startTime),
+		SpecSummary:  spec.Summary,
+		ReviewStatus: "approved",
+		Findings:     gatedReview.Findings,
+		CreatedAt:    now,
+	}, nil
+}

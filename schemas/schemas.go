@@ -7,3 +7,13 @@ import _ "embed"
 //
 //go:embed arm_result.json
 var ArmResult []byte
+
+// TaskSpec is the structured output from the specify step in Feature 002 (FR-004).
+//
+//go:embed task_spec.json
+var TaskSpec []byte
+
+// ReviewFindings is the structured output from the cross-family review step in Feature 002 (FR-007).
+//
+//go:embed review_findings.json
+var ReviewFindings []byte
