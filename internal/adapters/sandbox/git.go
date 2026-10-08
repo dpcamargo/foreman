@@ -71,10 +71,10 @@ func (m *Manager) populate(ctx context.Context, mirror string, ws eval.Workspace
 	if err := os.MkdirAll(filepath.Dir(ws.Dir), 0o755); err != nil {
 		return fmt.Errorf("create run dir: %w", err)
 	}
-	if _, err := git(ctx, "", "clone", "-q", "--no-hardlinks", "--no-checkout", mirror, ws.Dir); err != nil {
+	if _, err := Git(ctx, "", "clone", "-q", "--no-hardlinks", "--no-checkout", mirror, ws.Dir); err != nil {
 		return fmt.Errorf("clone: %w", err)
 	}
-	if _, err := git(ctx, ws.Dir, "checkout", "-q", "--detach", ws.Base); err != nil {
+	if _, err := Git(ctx, ws.Dir, "checkout", "-q", "--detach", ws.Base); err != nil {
 		return fmt.Errorf("checkout %s: %w", ws.Base, err)
 	}
 	// Capture the trusted git dir before anything else can touch the workspace.
@@ -105,14 +105,14 @@ func (m *Manager) ensureMirror(ctx context.Context, repoURL, base string) (strin
 		if err := os.MkdirAll(filepath.Dir(mirror), 0o755); err != nil {
 			return "", fmt.Errorf("create mirrors dir: %w", err)
 		}
-		if _, err := git(ctx, "", "clone", "-q", "--mirror", repoURL, mirror); err != nil {
+		if _, err := Git(ctx, "", "clone", "-q", "--mirror", repoURL, mirror); err != nil {
 			os.RemoveAll(mirror)
 			return "", fmt.Errorf("mirror %s: %w", repoURL, err)
 		}
-	} else if _, err := git(ctx, "", "--git-dir="+mirror, "fetch", "-q", "--prune"); err != nil {
+	} else if _, err := Git(ctx, "", "--git-dir="+mirror, "fetch", "-q", "--prune"); err != nil {
 		return "", fmt.Errorf("fetch %s: %w", repoURL, err)
 	}
-	if _, err := git(ctx, "", "--git-dir="+mirror, "cat-file", "-e", base+"^{commit}"); err != nil {
+	if _, err := Git(ctx, "", "--git-dir="+mirror, "cat-file", "-e", base+"^{commit}"); err != nil {
 		return "", fmt.Errorf("%s in %s: %w", base, repoURL, eval.ErrBaseNotFound)
 	}
 	return mirror, nil
@@ -128,10 +128,10 @@ func (m *Manager) Export(ctx context.Context, ws eval.Workspace) ([]byte, error)
 		"--git-dir=" + ws.TrustedGitDir, "--work-tree=" + ws.Dir,
 		"-c", "core.fsmonitor=false", "-c", "diff.external=", "-c", "core.attributesFile=/dev/null",
 	}
-	if _, err := git(ctx, ws.Dir, append(append(trusted, "add", "-A"), pathspec...)...); err != nil {
+	if _, err := Git(ctx, ws.Dir, append(append(trusted, "add", "-A"), pathspec...)...); err != nil {
 		return nil, fmt.Errorf("stage workspace changes: %w", err)
 	}
-	diff, err := git(ctx, ws.Dir, append(trusted, "diff", "--cached", "--binary", "--no-color",
+	diff, err := Git(ctx, ws.Dir, append(trusted, "diff", "--cached", "--binary", "--no-color",
 		"--no-ext-diff", "--no-textconv", ws.Base)...)
 	if err != nil {
 		return nil, fmt.Errorf("diff workspace: %w", err)
@@ -173,13 +173,14 @@ func (m *Manager) DestroyWorkspace(_ context.Context, dir string) error {
 
 var _ engine.WorkspaceCloner = (*Manager)(nil)
 
-// git runs git with hooks disabled, no system or global config, no prompts, and no
-// inherited GIT_* variables.
-func git(ctx context.Context, dir string, args ...string) ([]byte, error) {
+// Git runs git with hooks disabled, no system or global config, no prompts, and no
+// inherited GIT_* variables. Exported so other adapters (e.g. internal/adapters/integrator)
+// reuse this exact hardened invocation rather than reimplementing a look-alike.
+func Git(ctx context.Context, dir string, args ...string) ([]byte, error) {
 	full := append([]string{"-c", "core.hooksPath=/dev/null"}, args...)
 	cmd := exec.CommandContext(ctx, "git", full...)
 	cmd.Dir = dir
-	cmd.Env = gitEnv()
+	cmd.Env = GitEnv()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
@@ -188,7 +189,10 @@ func git(ctx context.Context, dir string, args ...string) ([]byte, error) {
 	return stdout.Bytes(), nil
 }
 
-func gitEnv() []string {
+// GitEnv returns the hardened environment every git call here (and in any adapter reusing
+// Git) runs under: no system config, no global config, no credential prompts, no inherited
+// GIT_* or LC_ALL overrides.
+func GitEnv() []string {
 	env := []string{"GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_TERMINAL_PROMPT=0", "LC_ALL=C"}
 	for _, kv := range os.Environ() {
 		if strings.HasPrefix(kv, "GIT_") || strings.HasPrefix(kv, "LC_ALL=") {
