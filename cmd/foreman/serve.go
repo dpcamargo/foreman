@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/dpcamargo/foreman/internal/adapters/container"
+	"github.com/dpcamargo/foreman/internal/adapters/integrator"
 	"github.com/dpcamargo/foreman/internal/adapters/localapi"
 	"github.com/dpcamargo/foreman/internal/adapters/proc"
 	"github.com/dpcamargo/foreman/internal/adapters/runner/codex"
@@ -68,6 +69,14 @@ func serve(ctx context.Context, e env, stdout, stderr io.Writer) int {
 		sender = telegramClient
 	}
 
+	// The integrator (US4: /deliver and /merge) needs FOREMAN_GITHUB_TOKEN and a target
+	// owner/repo — read from the same .env the Telegram token comes from. Left nil (and the
+	// delivery gate no-op) until both are set.
+	var ig pusher
+	if e.GitHubToken != "" && e.GitHubOwner != "" && e.GitHubRepo != "" {
+		ig = integrator.New(e.Work, e.GitHubOwner, e.GitHubRepo, e.GitHubToken)
+	}
+
 	// sup doesn't exist yet — NewSupervisor builds the Engine from engineCfg immediately
 	// below — so the ApprovalGate closure captures this variable by reference rather than
 	// by value. By the time the closure actually runs (during a later Dispatch call, well
@@ -78,6 +87,16 @@ func serve(ctx context.Context, e env, stdout, stderr io.Writer) int {
 		return requestSpecApproval(ctx, store, sup, sender, taskID, spec)
 	}
 	sup = engine.NewSupervisor(engineCfg, 2)
+
+	// T041's delivery gate: fires after every successful RunTask (see tasks.go's
+	// dispatchOnDone). No-op if the integrator isn't configured yet.
+	dispatchOnDone = func(ctx context.Context, report engine.TaskReport, err error) {
+		if err != nil || ig == nil {
+			return
+		}
+		_ = requestDeliveryApproval(ctx, store, sup, sender, ig, report)
+	}
+	mergePusher = ig
 
 	mux := newAPIMux(store, sup)
 	api, err := localapi.New(e.socketPath(), mux)

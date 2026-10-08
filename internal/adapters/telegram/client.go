@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"time"
@@ -102,6 +103,46 @@ type SendMessageRequest struct {
 	ChatID      int64                 `json:"chat_id"`
 	Text        string                `json:"text"`
 	ReplyMarkup *InlineKeyboardMarkup `json:"reply_markup,omitempty"`
+}
+
+// SendDocument sends a file attachment (e.g. /diff's .patch file — Telegram's 4096-char
+// message cap means a real patch can't fit in a plain message). Uses multipart/form-data,
+// unlike the JSON-only call() helper.
+func (c *Client) SendDocument(ctx context.Context, chatID int64, filename string, content []byte) (Message, error) {
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	if err := w.WriteField("chat_id", strconv.FormatInt(chatID, 10)); err != nil {
+		return Message{}, fmt.Errorf("write chat_id field: %w", err)
+	}
+	part, err := w.CreateFormFile("document", filename)
+	if err != nil {
+		return Message{}, fmt.Errorf("create document field: %w", err)
+	}
+	if _, err := part.Write(content); err != nil {
+		return Message{}, fmt.Errorf("write document content: %w", err)
+	}
+	if err := w.Close(); err != nil {
+		return Message{}, fmt.Errorf("close multipart body: %w", err)
+	}
+	url := c.BaseURL + "/bot" + c.Token + "/sendDocument"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &buf)
+	if err != nil {
+		return Message{}, fmt.Errorf("build sendDocument request: %w", err)
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return Message{}, fmt.Errorf("sendDocument: %w", err)
+	}
+	defer resp.Body.Close()
+	var out apiResponse[Message]
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return Message{}, fmt.Errorf("decode sendDocument response: %w", err)
+	}
+	if !out.OK {
+		return Message{}, fmt.Errorf("sendDocument: %s", out.Descr)
+	}
+	return out.Result, nil
 }
 
 // SendMessage posts a message, returning the sent Message (its MessageID is needed for a

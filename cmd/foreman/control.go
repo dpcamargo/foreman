@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dpcamargo/foreman/internal/core/engine"
 	"github.com/dpcamargo/foreman/internal/core/task"
 )
 
@@ -42,7 +43,11 @@ func resumeTask(ctx context.Context, store taskStore, sup dispatcherApprovals, t
 	if err := store.UpdateTaskStatus(ctx, taskID, tsk.Status, tsk.CurrentNodeID); err != nil {
 		return fmt.Errorf("update task status: %w", err)
 	}
-	sup.Dispatch(context.WithoutCancel(ctx), engineRunParamsFor(tsk))
+	sup.DispatchWithReport(context.WithoutCancel(ctx), engineRunParamsFor(tsk), func(report engine.TaskReport, err error) {
+		if dispatchOnDone != nil {
+			dispatchOnDone(context.WithoutCancel(ctx), report, err)
+		}
+	})
 	return nil
 }
 

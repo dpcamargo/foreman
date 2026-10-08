@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dpcamargo/foreman/internal/adapters/sqlite"
 	"github.com/dpcamargo/foreman/internal/core/control"
 	"github.com/dpcamargo/foreman/internal/core/engine"
 	"github.com/dpcamargo/foreman/internal/core/task"
@@ -14,14 +15,19 @@ import (
 
 // fakeTaskStore is a minimal in-memory taskStore for tests that don't need real SQLite.
 type fakeTaskStore struct {
-	tasks     []task.Task
-	nodes     map[string][]task.Node
-	approvals map[string]control.Approval
-	allowed   []int64
+	tasks      []task.Task
+	nodes      map[string][]task.Node
+	approvals  map[string]control.Approval
+	allowed    []int64
+	deliveries map[string]sqlite.Delivery
 }
 
 func newFakeTaskStore() *fakeTaskStore {
-	return &fakeTaskStore{nodes: make(map[string][]task.Node)}
+	return &fakeTaskStore{
+		nodes:      make(map[string][]task.Node),
+		approvals:  make(map[string]control.Approval),
+		deliveries: make(map[string]sqlite.Delivery),
+	}
 }
 
 func (s *fakeTaskStore) CreateTask(ctx context.Context, t task.Task, nodes []task.Node) (task.Task, error) {
@@ -100,6 +106,27 @@ func (s *fakeTaskStore) ResolveApproval(ctx context.Context, id, status, respons
 	return nil
 }
 func (s *fakeTaskStore) AllowedUserIDs(ctx context.Context) ([]int64, error) { return s.allowed, nil }
+func (s *fakeTaskStore) CreateDelivery(ctx context.Context, taskID, branch, diffSHA256 string, patch []byte) error {
+	s.deliveries[taskID] = sqlite.Delivery{TaskID: taskID, Branch: branch, DiffSHA256: diffSHA256, Patch: patch, Status: "pending"}
+	return nil
+}
+func (s *fakeTaskStore) Delivery(ctx context.Context, taskID string) (sqlite.Delivery, error) {
+	d, ok := s.deliveries[taskID]
+	if !ok {
+		return sqlite.Delivery{}, fmt.Errorf("delivery not found: %s", taskID)
+	}
+	return d, nil
+}
+func (s *fakeTaskStore) UpdateDeliveryStatus(ctx context.Context, taskID, status, prURL string) error {
+	d, ok := s.deliveries[taskID]
+	if !ok {
+		return fmt.Errorf("delivery not found: %s", taskID)
+	}
+	d.Status = status
+	d.PRURL = prURL
+	s.deliveries[taskID] = d
+	return nil
+}
 func (s *fakeTaskStore) PendingApprovalForTask(ctx context.Context, taskID string) (control.Approval, error) {
 	for _, a := range s.approvals {
 		if a.TaskID == taskID && a.Status == "pending" {
@@ -119,6 +146,12 @@ type fakeDispatcher struct {
 
 func (d *fakeDispatcher) Dispatch(ctx context.Context, params engine.RunParams) {
 	d.dispatched = append(d.dispatched, params)
+}
+func (d *fakeDispatcher) DispatchWithReport(ctx context.Context, params engine.RunParams, onDone func(engine.TaskReport, error)) {
+	d.dispatched = append(d.dispatched, params)
+	if onDone != nil {
+		onDone(engine.TaskReport{TaskID: params.Task.ID, Status: task.StatusSucceeded}, nil)
+	}
 }
 func (d *fakeDispatcher) Cancel(taskID string) { d.cancelled = append(d.cancelled, taskID) }
 func (d *fakeDispatcher) PauseGraceful(taskID string) {

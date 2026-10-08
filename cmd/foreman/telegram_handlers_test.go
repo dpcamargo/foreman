@@ -13,11 +13,25 @@ import (
 
 type fakeSender struct {
 	sent []telegram.SendMessageRequest
+	docs []struct {
+		chatID   int64
+		filename string
+		content  []byte
+	}
 }
 
 func (f *fakeSender) SendMessage(ctx context.Context, req telegram.SendMessageRequest) (telegram.Message, error) {
 	f.sent = append(f.sent, req)
 	return telegram.Message{MessageID: int64(len(f.sent))}, nil
+}
+
+func (f *fakeSender) SendDocument(ctx context.Context, chatID int64, filename string, content []byte) (telegram.Message, error) {
+	f.docs = append(f.docs, struct {
+		chatID   int64
+		filename string
+		content  []byte
+	}{chatID, filename, content})
+	return telegram.Message{MessageID: int64(len(f.docs))}, nil
 }
 
 func TestHandleUpdateTaskCommand(t *testing.T) {

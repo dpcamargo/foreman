@@ -144,9 +144,9 @@ and a merge happens only after the bound button is tapped and confirmed.
 ### Implementation for User Story 4
 
 - [X] T040 [US4] Create `internal/adapters/integrator/integrator.go`: applies the verified patch to `agent/<task>` in the existing per-repo bare mirror using `sandbox`'s hardened git helpers (now exported as `sandbox.Git`/`sandbox.GitEnv` — literally reused, not a look-alike copy), pushes the branch, opens a draft PR via `POST /repos/{owner}/{repo}/pulls` (plain `net/http`, bearer token from the `foreman` OS user's environment — never the workspace or verifier, FR-014), to pass T038
-- [ ] T041 [US4] Wire delivery in `cmd/foreman`: on a task's `engine.RunTask` returning `StatusSucceeded`, create a `Delivery` row and a `deliver`-kind `Approval` (same gate pattern as T031, now after `RunTask` returns rather than inside it — research.md R7); on approval, call the integrator (T040) and update `deliveries.status`/`pr_url`
-- [ ] T042 [US4] Wire merge in `cmd/foreman`: on **[Merge]** tap, validate the nonce against `deliveries.diff_sha256` via `control.ValidateApproval` (T039), then require one additional confirmation round-trip before calling the GitHub REST API's merge endpoint (FR-016 — never a single tap)
-- [ ] T043 [US4] Implement `/diff <id>` in `internal/adapters/telegram/commands.go`: sends the task's current patch as a `.patch` file attachment (Telegram's 4096-character message cap)
+- [X] T041 [US4] Wire delivery in `cmd/foreman`: on a task's `engine.RunTask` returning `StatusSucceeded`, create a `Delivery` row and a `deliver`-kind `Approval` (same gate pattern as T031, now after `RunTask` returns rather than inside it — research.md R7); on approval, call the integrator (T040) and update `deliveries.status`/`pr_url`
+- [X] T042 [US4] Wire merge in `cmd/foreman`: on **[Merge]** tap, validate the nonce against `deliveries.diff_sha256` via `control.ValidateApproval` (T039), then require one additional confirmation round-trip before calling the GitHub REST API's merge endpoint (FR-016 — never a single tap)
+- [X] T043 [US4] Implement `/diff <id>` in `internal/adapters/telegram/commands.go`: sends the task's current patch as a `.patch` file attachment (Telegram's 4096-character message cap)
 
 **Checkpoint**: All four user stories independently functional. `foreman` can take a task from
 a Telegram message to a merged PR, gated by two separate nonce-bound approvals.

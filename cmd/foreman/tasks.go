@@ -22,6 +22,7 @@ type taskStore interface {
 // same reason, and so tests can use a fake instead of a real Supervisor.
 type dispatcher interface {
 	Dispatch(ctx context.Context, params engine.RunParams)
+	DispatchWithReport(ctx context.Context, params engine.RunParams, onDone func(engine.TaskReport, error))
 }
 
 // supervisorControl is the pause/resume/cancel subset of *engine.Supervisor
@@ -46,6 +47,11 @@ var resolveBaseCommit = func(ctx context.Context, repoURL string) (string, error
 func engineRunParamsFor(tsk task.Task) engine.RunParams {
 	return engine.RunParams{Task: tsk}
 }
+
+// dispatchOnDone is the post-RunTask callback createTask/resumeTask pass to
+// DispatchWithReport (T041's delivery gate). Wired in serve.go once the store, Supervisor,
+// sender, and integrator all exist — nil in tests that don't exercise delivery.
+var dispatchOnDone func(ctx context.Context, report engine.TaskReport, err error)
 
 // createTask creates a pending task.Task for repoURL/requestText and hands it to sup for
 // dispatch, returning immediately with the new task id (spec US1: "/task" acknowledges
@@ -80,7 +86,11 @@ func createTask(ctx context.Context, store taskStore, sup dispatcher, repoURL, r
 		return task.Task{}, fmt.Errorf("create task: %w", err)
 	}
 
-	sup.Dispatch(context.WithoutCancel(ctx), engine.RunParams{Task: created})
+	sup.DispatchWithReport(context.WithoutCancel(ctx), engine.RunParams{Task: created}, func(report engine.TaskReport, err error) {
+		if dispatchOnDone != nil {
+			dispatchOnDone(context.WithoutCancel(ctx), report, err)
+		}
+	})
 	return created, nil
 }
 

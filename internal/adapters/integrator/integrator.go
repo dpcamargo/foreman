@@ -206,6 +206,34 @@ func (ig *Integrator) OpenDraftPR(ctx context.Context, taskID string, patch []by
 	return out.HTMLURL, nil
 }
 
+// MergePullRequest merges an already-approved (non-draft) PR via GitHub's REST merge
+// endpoint — only ever called after T042's two-round-trip merge confirmation (FR-016:
+// never a single tap).
+func (ig *Integrator) MergePullRequest(ctx context.Context, taskID string, pullNumber int) error {
+	body := map[string]any{"merge_method": "squash"}
+	b, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("marshal merge request: %w", err)
+	}
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/merge", ig.BaseURL, ig.Owner, ig.Repo, pullNumber)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(b))
+	if err != nil {
+		return fmt.Errorf("build merge request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+ig.Token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/vnd.github+json")
+	resp, err := ig.HTTP.Do(req)
+	if err != nil {
+		return fmt.Errorf("merge PR: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("merge PR: unexpected status %d", resp.StatusCode)
+	}
+	return nil
+}
+
 func (ig *Integrator) defaultBranch(ctx context.Context) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		ig.BaseURL+"/repos/"+ig.Owner+"/"+ig.Repo, nil)

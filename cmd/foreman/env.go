@@ -23,6 +23,9 @@ type env struct {
 	HermesHome    string // Hermes profile used by the hermes arm
 	GraderImage   string
 	TelegramToken string // "" disables the Telegram client; the local API still runs
+	GitHubToken   string // "" disables US4's delivery/merge gate; same .env as Telegram
+	GitHubOwner   string
+	GitHubRepo    string
 }
 
 func loadEnv(getenv func(string) string, homeDir func() (string, error)) (env, error) {
@@ -54,6 +57,9 @@ func loadEnv(getenv func(string) string, homeDir func() (string, error)) (env, e
 		HermesHome:    hermesHome,
 		GraderImage:   image,
 		TelegramToken: getenv("TELEGRAM_BOT_TOKEN"),
+		GitHubToken:   getenv("FOREMAN_GITHUB_TOKEN"),
+		GitHubOwner:   getenv("FOREMAN_GITHUB_OWNER"),
+		GitHubRepo:    getenv("FOREMAN_GITHUB_REPO"),
 	}, nil
 }
 

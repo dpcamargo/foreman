@@ -22,7 +22,12 @@ type TaskReport struct {
 	SpecSummary  string          `json:"spec_summary"`
 	ReviewStatus string          `json:"review_status"`
 	Findings     []ReviewFinding `json:"findings,omitempty"`
-	CreatedAt    time.Time       `json:"created_at"`
+	// Patch/DiffHash are the verified diff, surfaced for the daemon's delivery gate
+	// (T041/T043: deliveries.diff_sha256 binding and the /diff attachment). Not written to
+	// any report file — reports stay human-readable summaries (GenerateMarkdownReport).
+	Patch     []byte    `json:"-"`
+	DiffHash  string    `json:"diff_hash,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func GenerateMarkdownReport(r TaskReport) string {

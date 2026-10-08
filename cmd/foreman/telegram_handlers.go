@@ -13,13 +13,14 @@ import (
 // tests can use a fake instead of a real Bot API call.
 type messageSender interface {
 	SendMessage(ctx context.Context, req telegram.SendMessageRequest) (telegram.Message, error)
+	SendDocument(ctx context.Context, chatID int64, filename string, content []byte) (telegram.Message, error)
 }
 
 // fullStore is everything handleUpdate needs from the store: task CRUD/listing plus
-// approval lookup.
+// approval and delivery lookup (for /diff and merge callbacks).
 type fullStore interface {
 	taskStore
-	approvalStore
+	deliverApprovalStore
 	approvalResolver
 }
 
@@ -179,6 +180,20 @@ func handleUpdate(ctx context.Context, store fullStore, sup dispatcherApprovals,
 		// something this command can honestly satisfy today.
 		reply(ctx, sender, chatID, "answer recorded, but automatic resume isn't wired yet; use /task to start a corrected attempt")
 
+	case "diff":
+		if len(cmd.Args) == 0 {
+			reply(ctx, sender, chatID, "usage: /diff <id>")
+			return
+		}
+		d, err := store.Delivery(ctx, cmd.Args[0])
+		if err != nil {
+			reply(ctx, sender, chatID, "no delivery for "+cmd.Args[0])
+			return
+		}
+		if _, err := sender.SendDocument(ctx, chatID, cmd.Args[0]+".patch", d.Patch); err != nil {
+			reply(ctx, sender, chatID, "could not send diff: "+err.Error())
+		}
+
 	case "help":
 		reply(ctx, sender, chatID, helpText)
 
@@ -187,13 +202,21 @@ func handleUpdate(ctx context.Context, store fullStore, sup dispatcherApprovals,
 	}
 }
 
+// mergePusher is set once in serve.go alongside dispatchOnDone (same reason: the
+// integrator doesn't exist at package-init time). nil means merge callbacks are ignored.
+var mergePusher pusher
+
 // handleCallbackQuery applies an inline-button tap: [Approve] or [Reject] on a spec
 // approval. The nonce in the callback data is the single enforcement point
 // (contracts/approval-nonce.md) — the chat/allowlist check already happened in Dispatcher,
 // but the button itself is additionally bound to the exact approval it was issued for.
-func handleCallbackQuery(ctx context.Context, store approvalStore, sup approvalWaiter, sender messageSender, cq *telegram.CallbackQuery) {
+func handleCallbackQuery(ctx context.Context, store fullStore, sup approvalWaiter, sender messageSender, cq *telegram.CallbackQuery) {
 	cb, ok := telegram.ParseCallbackData(cq.Data)
 	if !ok {
+		return
+	}
+	if cb.Decision == "merge" {
+		handleMergeCallback(ctx, store, sup, mergePusher, cb, sender)
 		return
 	}
 	err := resolveApproval(ctx, store, sup, cb.ApprovalID, cb.Nonce, cb.Decision, "")
@@ -214,6 +237,7 @@ const helpText = `commands:
 /task <repo> <request text>   create a task
 /status [id]                  show a task's progress (omit id for the most recent)
 /tasks                        list recent tasks
+/diff <id>                    send a delivered task's patch as a .patch file
 /help                         show this help`
 
 func reply(ctx context.Context, sender messageSender, chatID int64, text string) {

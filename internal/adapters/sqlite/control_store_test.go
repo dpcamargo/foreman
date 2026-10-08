@@ -189,7 +189,7 @@ func TestControlStoreDeliveryCRUD(t *testing.T) {
 	s := openTest(t)
 	taskID := newTestTaskForControl(t, ctx, s)
 
-	if err := s.CreateDelivery(ctx, taskID, "agent/tsk_1", "feedface"); err != nil {
+	if err := s.CreateDelivery(ctx, taskID, "agent/tsk_1", "feedface", []byte("diff --git a/x b/x\n")); err != nil {
 		t.Fatalf("CreateDelivery: %v", err)
 	}
 	got, err := s.Delivery(ctx, taskID)

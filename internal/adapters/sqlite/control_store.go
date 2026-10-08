@@ -190,16 +190,19 @@ type Delivery struct {
 	Branch     string
 	PRURL      string
 	DiffSHA256 string
+	Patch      []byte
 	Status     string
 }
 
-// CreateDelivery starts tracking a task's path to a merged PR (spec FR-014).
-func (s *Store) CreateDelivery(ctx context.Context, taskID, branch, diffSHA256 string) error {
+// CreateDelivery starts tracking a task's path to a merged PR (spec FR-014). patch is the
+// verified diff bytes (migrations/0005) — /diff <id> sends exactly these, and the merge
+// gate binds its approval to DiffSHA256 of exactly these (SC-002).
+func (s *Store) CreateDelivery(ctx context.Context, taskID, branch, diffSHA256 string, patch []byte) error {
 	at := s.timestamp()
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO deliveries (task_id, branch, diff_sha256, status, created_at, updated_at)
-		VALUES (?, ?, ?, 'pending', ?, ?);`,
-		taskID, branch, diffSHA256, at, at)
+		INSERT INTO deliveries (task_id, branch, diff_sha256, patch, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'pending', ?, ?);`,
+		taskID, branch, diffSHA256, patch, at, at)
 	if err != nil {
 		return fmt.Errorf("create delivery: %w", err)
 	}
@@ -211,8 +214,8 @@ func (s *Store) Delivery(ctx context.Context, taskID string) (Delivery, error) {
 	var d Delivery
 	var prURL sql.NullString
 	err := s.db.QueryRowContext(ctx, `
-		SELECT task_id, branch, diff_sha256, status, pr_url FROM deliveries WHERE task_id = ?;`, taskID).
-		Scan(&d.TaskID, &d.Branch, &d.DiffSHA256, &d.Status, &prURL)
+		SELECT task_id, branch, diff_sha256, patch, status, pr_url FROM deliveries WHERE task_id = ?;`, taskID).
+		Scan(&d.TaskID, &d.Branch, &d.DiffSHA256, &d.Patch, &d.Status, &prURL)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Delivery{}, fmt.Errorf("delivery for task %s: %w", taskID, ErrNotFoundControl)
 	}

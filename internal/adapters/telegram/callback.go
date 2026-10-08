@@ -20,6 +20,19 @@ func ParseCallbackData(data string) (CallbackData, bool) {
 	return CallbackData{ApprovalID: parts[0], Nonce: parts[1], Decision: parts[2]}, true
 }
 
+// NewMergeKeyboard builds the single [Merge] inline button for a merge approval, with the
+// approval id and nonce bound into its callback data (contracts/approval-nonce.md — a stale
+// tap can't merge a since-changed diff).
+func NewMergeKeyboard(approvalID, nonce string) *InlineKeyboardMarkup {
+	return &InlineKeyboardMarkup{
+		InlineKeyboard: [][]InlineKeyboardButton{
+			{
+				{Text: "Merge", CallbackData: approvalID + "|" + nonce + "|merge"},
+			},
+		},
+	}
+}
+
 // NewApprovalKeyboard builds the [Approve] [Reject] inline keyboard for a spec (or deliver)
 // approval, with the approval id and nonce bound into each button's callback data so a
 // stale or edited approval can't be approved by tapping an old message

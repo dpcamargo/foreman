@@ -72,6 +72,42 @@ func (s *Supervisor) Dispatch(ctx context.Context, params RunParams) {
 	}()
 }
 
+// DispatchWithReport is Dispatch, but calls onDone with RunTask's result before returning
+// (T041: the daemon's delivery gate needs to see TaskReport.Patch/DiffHash after a
+// successful run — Dispatch alone discards it). onDone may be nil.
+func (s *Supervisor) DispatchWithReport(ctx context.Context, params RunParams, onDone func(TaskReport, error)) {
+	taskID := params.Task.ID
+	runCtx, cancel := context.WithCancel(ctx)
+
+	s.mu.Lock()
+	s.cancels[taskID] = cancel
+	s.paused[taskID] = false
+	s.mu.Unlock()
+
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		defer func() {
+			s.mu.Lock()
+			delete(s.cancels, taskID)
+			delete(s.paused, taskID)
+			s.mu.Unlock()
+		}()
+
+		select {
+		case s.sem <- struct{}{}:
+		case <-runCtx.Done():
+			return
+		}
+		defer func() { <-s.sem }()
+
+		report, err := s.eng.RunTask(runCtx, params)
+		if onDone != nil {
+			onDone(report, err)
+		}
+	}()
+}
+
 // Cancel aborts taskID's in-flight dispatch immediately (FR-009, "/pause <id> now"): the
 // cancelled context propagates to the implementer/verifier through the same
 // exec.CommandContext threading Feature 002's runners already use, killing the running

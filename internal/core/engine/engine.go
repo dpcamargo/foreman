@@ -150,6 +150,7 @@ func (e *Engine) RunTask(ctx context.Context, params RunParams) (TaskReport, err
 	startTime := time.Now()
 	guard := NewLoopGuard()
 	var lastPatch []byte
+	var lastDiffHash string
 	var lastEvidence *FailureEvidence
 	var verified bool
 
@@ -273,6 +274,7 @@ func (e *Engine) RunTask(ctx context.Context, params RunParams) (TaskReport, err
 			_ = e.cfg.Store.UpdateNodeStatus(ctx, implNode.ID, task.NodeStatusSucceeded)
 			_ = e.cfg.Store.UpdateNodeStatus(ctx, verifyNode.ID, task.NodeStatusSucceeded)
 			lastPatch = implRes.Patch
+			lastDiffHash = implRes.DiffHash
 			verified = true
 			break
 		}
@@ -382,6 +384,8 @@ func (e *Engine) RunTask(ctx context.Context, params RunParams) (TaskReport, err
 		WallTotal:    time.Since(startTime),
 		SpecSummary:  spec.Summary,
 		ReviewStatus: "approved",
+		Patch:        lastPatch,
+		DiffHash:     lastDiffHash,
 		Findings:     gatedReview.Findings,
 		CreatedAt:    now,
 	}, nil
