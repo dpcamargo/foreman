@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dpcamargo/foreman/internal/core/engine"
 	"github.com/dpcamargo/foreman/internal/core/eval"
 )
 
@@ -56,6 +57,31 @@ func TestVersion(t *testing.T) {
 	}
 	if arm.Name() != "a1" {
 		t.Errorf("Name = %q", arm.Name())
+	}
+	if arm.Family() != "openai" || arm.Route() != "codex/default" {
+		t.Errorf("family/route = %q/%q", arm.Family(), arm.Route())
+	}
+}
+
+func TestSpecifyStructuredOutput(t *testing.T) {
+	arm, _, in, _ := setup(t, "", `{"summary":"Add Sub","acceptance_criteria":["works"],"verify_commands":[["go","test","./..."]],"cited_files":["add.go"]}`)
+	spec, err := arm.Specify(context.Background(), engine.SpecInput{RequestText: "add subtraction", Workspace: in.Workspace.Dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if spec.Summary != "Add Sub" || len(spec.VerifyCommands) != 1 || spec.CitedFiles[0] != "add.go" {
+		t.Fatalf("spec = %+v", spec)
+	}
+}
+
+func TestReviewStructuredOutput(t *testing.T) {
+	arm, _, _, _ := setup(t, "", `{"status":"approved","summary":"looks good","findings":[]}`)
+	res, err := arm.Review(context.Background(), engine.ReviewInput{Spec: engine.TaskSpec{Summary: "Add Sub"}, Patch: []byte("diff")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.Approved || res.Summary != "looks good" {
+		t.Fatalf("review = %+v", res)
 	}
 }
 

@@ -63,6 +63,11 @@ func (r *Redactor) Redact(s string) string {
 	return s
 }
 
+// Secrets returns a copy of the secret values being redacted.
+func (r *Redactor) Secrets() []string {
+	return append([]string(nil), r.values...)
+}
+
 // Truncate cuts s to at most limit bytes (on a UTF-8 boundary) and marks the cut.
 func (r *Redactor) Truncate(s string, limit int) string { return TruncateUTF8(s, limit) }
 

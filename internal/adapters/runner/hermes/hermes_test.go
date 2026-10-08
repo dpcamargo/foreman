@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dpcamargo/foreman/internal/core/engine"
 	"github.com/dpcamargo/foreman/internal/core/eval"
 )
 
@@ -82,8 +83,24 @@ func TestVersionAndNames(t *testing.T) {
 			t.Errorf("%s Version = %q, %v", arm.Name(), v, err)
 		}
 	}
-	if NewOneshot(f.cfg).Name() != "a0" || NewKanbanGoal(f.cfg).Name() != "a2" {
+	oneshoot := NewOneshot(f.cfg)
+	if oneshoot.Name() != "a0" || NewKanbanGoal(f.cfg).Name() != "a2" {
 		t.Error("arm names must be a0 and a2")
+	}
+	if oneshoot.Family() != "anthropic" || oneshoot.Route() != "hermes/claude" {
+		t.Errorf("family/route = %q/%q", oneshoot.Family(), oneshoot.Route())
+	}
+}
+
+func TestOneshotReviewStructuredOutput(t *testing.T) {
+	f := newFixture(t)
+	f.set("result.jsonl", `{"type":"result","session_id":"sess_1","exit_code":0,"text":"{\"status\":\"approved\",\"summary\":\"looks good\",\"findings\":[]}","tokens":{}}`+"\n")
+	res, err := NewOneshot(f.cfg).Review(context.Background(), engine.ReviewInput{Spec: engine.TaskSpec{Summary: "Add Sub"}, Patch: []byte("diff")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.Approved || res.Summary != "looks good" {
+		t.Fatalf("review = %+v", res)
 	}
 }
 
