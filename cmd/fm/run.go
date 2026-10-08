@@ -407,6 +407,9 @@ Options:
 	}
 
 	// 5. Write the task report (markdown and JSON), named rpt_<id>.{md,json} (data-model.md).
+	// Redact every free-text field at write time (FR-017): a secret echoed into RequestText,
+	// SpecSummary or a ReviewFinding must never reach state/reports/.
+	report.Redact = a.redactor.Redact
 	md := engine.GenerateMarkdownReport(report)
 	js, _ := engine.GenerateJSONReport(report)
 	rptsDir := filepath.Join(a.env.State, "reports")

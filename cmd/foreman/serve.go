@@ -92,7 +92,11 @@ func serve(ctx context.Context, e env, stdout, stderr io.Writer) int {
 	// T041's delivery gate: fires after every successful RunTask (see tasks.go's
 	// dispatchOnDone). No-op if the integrator isn't configured yet.
 	dispatchOnDone = func(ctx context.Context, report engine.TaskReport, err error) {
-		if err != nil || ig == nil {
+		if err != nil {
+			return
+		}
+		writeDaemonReport(ctx, e, report)
+		if ig == nil {
 			return
 		}
 		_ = requestDeliveryApproval(ctx, store, sup, sender, ig, report)

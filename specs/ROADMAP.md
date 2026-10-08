@@ -43,6 +43,21 @@ against the 60s goal. The exit criterion ("beats the best single-agent arm on a 
 replay of >=15 recorded real tasks") is not yet measured: that needs 15+ replayable records,
 accumulated as development tasks run through `fm run`.
 
+003 is code-complete but not live-verified: 49 of its 51 tasks are done and unit-tested
+(`foreman` daemon + `fm` CLI, Telegram `/task /status /tasks /pause /resume /cancel /reject
+/answer /diff /logs /budget`, nonce-bound spec/deliver/merge approvals with FR-016's two-tap
+merge confirmation, GitHub delivery/merge via a draft-PR-first integrator, and a housekeeping
+tick for retention + unanswered-approval ntfy pings). `gofmt -l .`, `go vet ./...` and
+`go test ./...` are all clean, including `internal/archtest` covering the new
+`internal/core/control` package. Still open: T048 (secret-redaction check) and T049
+(quickstart steps 1-7) — both need a real Telegram bot token, a real GitHub fine-grained PAT
+on a disposable test repo, and (for unattended runs) the `foreman` macOS user per ADR 0001,
+so the operator runs them. The exit criterion ("run a task end to end from a phone; killing
+foreman mid-task loses nothing") is covered by unit and integration tests
+(`TestServeRecoversLostRunsOnStartup`, the two-tap merge tests) but is not yet confirmed
+live. A disposable private test repo (`dpcamargo/foreman-test`, default branch `main`) is
+already provisioned for T049.
+
 ## Why this order, not a different one
 
 - **001 before 002**: 002 writes a task record for every run and is judged by replaying those
