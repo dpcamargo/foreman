@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dpcamargo/foreman/internal/core/engine"
 	"github.com/dpcamargo/foreman/internal/core/eval"
 )
 
@@ -148,6 +149,29 @@ func (m *Manager) Destroy(_ context.Context, ws eval.Workspace) error {
 	}
 	return nil
 }
+
+// PrepareWorkspace implements engine.WorkspaceCloner.
+func (m *Manager) PrepareWorkspace(ctx context.Context, taskID, runID, repoURL, baseCommit string) (string, error) {
+	id := runID
+	if id == "" {
+		id = taskID
+	}
+	ws, err := m.Prepare(ctx, id, repoURL, baseCommit, nil)
+	if err != nil {
+		return "", err
+	}
+	return ws.Dir, nil
+}
+
+// DestroyWorkspace implements engine.WorkspaceCloner.
+func (m *Manager) DestroyWorkspace(_ context.Context, dir string) error {
+	if dir == "" {
+		return nil
+	}
+	return os.RemoveAll(filepath.Dir(dir))
+}
+
+var _ engine.WorkspaceCloner = (*Manager)(nil)
 
 // git runs git with hooks disabled, no system or global config, no prompts, and no
 // inherited GIT_* variables.

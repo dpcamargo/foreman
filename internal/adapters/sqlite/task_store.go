@@ -100,6 +100,16 @@ func (s *Store) Task(ctx context.Context, id string) (task.Task, error) {
 	return t, nil
 }
 
+// UpdateTaskRecordID links a task to the Feature 001 task record written for it (FR-021).
+func (s *Store) UpdateTaskRecordID(ctx context.Context, id string, recordID string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE tasks SET record_id = ?, updated_at = ? WHERE id = ?;`,
+		nullString(recordID), s.clock().Format(tsLayout), id)
+	if err != nil {
+		return fmt.Errorf("update task record id: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) UpdateTaskStatus(ctx context.Context, id string, status task.TaskStatus, currentNodeID string) error {
 	at := s.clock()
 	return s.withTx(ctx, func(tx *sql.Tx) error {
@@ -238,6 +248,36 @@ func (s *Store) RecordTaskRun(ctx context.Context, r task.Run) error {
 		}
 		return s.insertEvent(ctx, tx, "run", r.ID, nil, string(r.Status), nil)
 	})
+}
+
+// RunningTaskRuns returns attempts that need PID reconciliation at startup.
+func (s *Store) RunningTaskRuns(ctx context.Context) ([]task.Run, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, task_id, node_id, attempt_num, ladder_rung, route, model_family,
+		       pid, pid_started_at, started_at
+		FROM runs WHERE status = ? ORDER BY started_at, id;`, string(task.RunRunning))
+	if err != nil {
+		return nil, fmt.Errorf("query running task runs: %w", err)
+	}
+	defer rows.Close()
+	var runs []task.Run
+	for rows.Next() {
+		var run task.Run
+		var pidStarted sql.NullString
+		var started string
+		if err := rows.Scan(&run.ID, &run.TaskID, &run.NodeID, &run.AttemptNum, &run.LadderRung,
+			&run.Route, &run.ModelFamily, &run.PID, &pidStarted, &started); err != nil {
+			return nil, fmt.Errorf("scan running task run: %w", err)
+		}
+		run.Status = task.RunRunning
+		run.PIDStartedAt = pidStarted.String
+		run.StartedAt, _ = time.Parse(tsLayout, started)
+		runs = append(runs, run)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate running task runs: %w", err)
+	}
+	return runs, nil
 }
 
 func (s *Store) FinishTaskRun(ctx context.Context, runID string, status task.RunStatus, failureClass task.FailureClass, failureSig string) error {

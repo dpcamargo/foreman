@@ -106,8 +106,22 @@ func TestTaskStoreRunLifecycle(t *testing.T) {
 	if err := s.RecordTaskRun(ctx, r); err != nil {
 		t.Fatalf("RecordTaskRun: %v", err)
 	}
+	running, err := s.RunningTaskRuns(ctx)
+	if err != nil {
+		t.Fatalf("RunningTaskRuns: %v", err)
+	}
+	if len(running) != 1 || running[0].ID != runID || running[0].PID != 12345 {
+		t.Fatalf("running runs = %+v", running)
+	}
 
 	if err := s.FinishTaskRun(ctx, runID, task.RunFailed, task.FailureAttempt, "sig_abc123"); err != nil {
 		t.Fatalf("FinishTaskRun: %v", err)
+	}
+	running, err = s.RunningTaskRuns(ctx)
+	if err != nil {
+		t.Fatalf("RunningTaskRuns after finish: %v", err)
+	}
+	if len(running) != 0 {
+		t.Fatalf("running after finish = %+v", running)
 	}
 }
