@@ -65,9 +65,9 @@ otherwise idle; observe the immediate acknowledgement and at least one subsequen
 
 - [X] T022 [US1] Create `internal/adapters/telegram/client.go`: `Client` wrapping `net/http` for `getUpdates` (25s long-poll timeout, backoff on error), `sendMessage`, `editMessageReplyMarkup`, `answerCallbackQuery`, to pass T021
 - [X] T023 [US1] Create `internal/adapters/telegram/commands.go`: command parser/dispatcher for `/task`, `/status`, `/tasks`, `help`; checks `control.Allowlist.IsAllowed` and `chat.type == "private"` before any command executes, to pass T020
-- [ ] T024 [US1] Wire `/task` in `cmd/foreman`: on receipt, create a `task.Task` row (`status=pending`) via the sqlite store, record a `TaskCreated` event, call `Supervisor.Dispatch`, reply with the new task id
-- [ ] T025 [US1] Wire `/status [id]` and `/tasks` in `cmd/foreman`: read task/node state via the sqlite store, format the reply (current phase, attempts, tokens/cost so far; omitted id means the most recently created task)
-- [ ] T026 [US1] Implement `POST /v1/tasks`, `GET /v1/tasks/{id}`, `GET /v1/tasks` on `internal/adapters/localapi/server.go` (contracts/local-api.md; mirrors T024/T025's semantics for the local `fm` CLI)
+- [X] T024 [US1] Wire `/task` in `cmd/foreman`: on receipt, create a `task.Task` row (`status=pending`) via the sqlite store, record a `TaskCreated` event, call `Supervisor.Dispatch`, reply with the new task id
+- [X] T025 [US1] Wire `/status [id]` and `/tasks` in `cmd/foreman`: read task/node state via the sqlite store, format the reply (current phase, attempts, tokens/cost so far; omitted id means the most recently created task)
+- [X] T026 [US1] Implement `POST /v1/tasks`, `GET /v1/tasks/{id}`, `GET /v1/tasks` on `internal/adapters/localapi/server.go` (contracts/local-api.md; mirrors T024/T025's semantics for the local `fm` CLI)
 
 **Checkpoint**: User Story 1 functional and independently testable — a task created from
 Telegram is tracked end to end through Feature 002's loop.

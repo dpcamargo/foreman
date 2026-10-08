@@ -4,20 +4,27 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 
+	"github.com/dpcamargo/foreman/internal/adapters/container"
 	"github.com/dpcamargo/foreman/internal/adapters/localapi"
 	"github.com/dpcamargo/foreman/internal/adapters/proc"
+	"github.com/dpcamargo/foreman/internal/adapters/runner/codex"
+	"github.com/dpcamargo/foreman/internal/adapters/runner/hermes"
+	"github.com/dpcamargo/foreman/internal/adapters/sandbox"
 	"github.com/dpcamargo/foreman/internal/adapters/sqlite"
+	"github.com/dpcamargo/foreman/internal/adapters/telegram"
 	"github.com/dpcamargo/foreman/internal/core/engine"
 	"github.com/dpcamargo/foreman/internal/core/eval"
 )
 
 // serve runs the daemon until ctx is cancelled (by a signal, see run in main.go, or by a
 // test): opens the store, sweeps lost runs left behind by a previous crash before accepting
-// any new dispatch (FR-010), constructs the Supervisor that later tasks wire dispatch
-// through, and starts the local API listener. Telegram and the story-specific local API
-// routes are wired in later tasks (T022 onward); this is the foundation they attach to.
+// any new dispatch (FR-010), wires one shared engine behind the Supervisor, and starts the
+// local API listener plus (if TELEGRAM_BOT_TOKEN is set) the Telegram client.
 func serve(ctx context.Context, e env, stdout, stderr io.Writer) int {
 	if err := e.ensureDirs(); err != nil {
 		fmt.Fprintf(stderr, "foreman: %v\n", err)
@@ -46,19 +53,14 @@ func serve(ctx context.Context, e env, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "reconciled %d lost run(s)\n", len(lost))
 	}
 
-	// The Supervisor's engine.Config is filled in by later tasks (T024 onward) as each
-	// user story wires its own dispatch path (Specifier/Implementer/Verifier/Reviewer,
-	// the ApprovalGate hook). Constructing it here, with Store already set, gives every
-	// later task one shared place to attach to rather than threading config through main.
-	sup := engine.NewSupervisor(engine.Config{Store: store}, 2)
-	_ = sup // used once Telegram/local-API dispatch handlers are wired (T024+)
+	engineCfg, err := buildEngineConfig(ctx, e, store)
+	if err != nil {
+		fmt.Fprintf(stderr, "foreman: wire engine: %v\n", err)
+		return exitInfra
+	}
+	sup := engine.NewSupervisor(engineCfg, 2)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/ping", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("pong"))
-	})
-
+	mux := newAPIMux(store, sup)
 	api, err := localapi.New(e.socketPath(), mux)
 	if err != nil {
 		fmt.Fprintf(stderr, "foreman: start local API: %v\n", err)
@@ -66,6 +68,13 @@ func serve(ctx context.Context, e env, stdout, stderr io.Writer) int {
 	}
 	serveErrCh := make(chan error, 1)
 	go func() { serveErrCh <- api.Serve() }()
+
+	if e.TelegramToken != "" {
+		client := telegram.NewClient(e.TelegramToken)
+		go pollTelegram(ctx, client, store, sup)
+	} else {
+		fmt.Fprintln(stdout, "foreman: TELEGRAM_BOT_TOKEN not set; local API only")
+	}
 
 	select {
 	case <-ctx.Done():
@@ -79,4 +88,91 @@ func serve(ctx context.Context, e env, stdout, stderr io.Writer) int {
 		}
 		return exitOK
 	}
+}
+
+// pollTelegram runs the long-poll loop until ctx is cancelled, checking the allowlist and
+// chat type before any command executes (FR-003) and dropping anything that fails that
+// check with no reply at all.
+func pollTelegram(ctx context.Context, client *telegram.Client, store *sqlite.Store, sup *engine.Supervisor) {
+	disp := telegram.Dispatcher{Allowlist: allowlistAdapter{store}}
+	_ = client.Poll(ctx, 0, func(u telegram.Update) {
+		allowed, err := disp.Allowed(ctx, u)
+		if err != nil || !allowed {
+			return
+		}
+		handleUpdate(ctx, store, sup, client, u)
+	})
+}
+
+// allowlistAdapter adapts *sqlite.Store's IsAllowedUser to telegram.AllowlistChecker.
+type allowlistAdapter struct{ store *sqlite.Store }
+
+func (a allowlistAdapter) IsAllowed(ctx context.Context, userID int64) (bool, error) {
+	return a.store.IsAllowedUser(ctx, userID)
+}
+
+// buildEngineConfig wires the one shared engine.Config every dispatched task runs through
+// (codex + hermes arms, the container verifier, the sandbox workspace cloner — the same
+// adapters cmd/fm/run.go wires for a single task.yaml run).
+//
+// FileExists is a known simplification: Feature 002's engine.Config has one FileExists
+// closure shared by every dispatch, with no per-task repo/commit context passed through it.
+// cmd/fm/run.go can close over one task.yaml's repo+commit because it only ever runs one
+// task per process; the daemon runs many tasks, for potentially different repos,
+// concurrently through one shared Engine. Closing over a single repo+commit here would be
+// wrong for every other repo, and there is no per-call hook in Feature 002 to pass one in
+// (changing that is out of scope for this feature — see research.md R7 for the one
+// engine.Config change this feature does make). Spec citations are therefore not checked
+// against the base commit for daemon-dispatched tasks; ValidateTaskSpec's other checks
+// (non-empty summary, acceptance criteria, verify commands) still apply.
+func buildEngineConfig(ctx context.Context, e env, store *sqlite.Store) (engine.Config, error) {
+	goroot, err := exec.CommandContext(ctx, "go", "env", "GOROOT").Output()
+	if err != nil {
+		return engine.Config{}, fmt.Errorf("go env GOROOT: %w", err)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return engine.Config{}, fmt.Errorf("user home dir: %w", err)
+	}
+
+	codexArm := codex.New(codex.Config{
+		GoRoot:   strings.TrimSpace(string(goroot)),
+		ModCache: filepath.Join(e.Work, "gomodcache"),
+		Home:     home,
+		Path:     os.Getenv("PATH"),
+	})
+	hermesArm := hermes.NewOneshot(hermes.Config{
+		HermesHome: e.HermesHome,
+		ModCache:   filepath.Join(e.Work, "gomodcache"),
+	})
+	redactor := eval.NewRedactor(environMap())
+	ws := sandbox.New(e.Work)
+	grader := container.New(container.Config{
+		Image: e.GraderImage, DockerContext: e.DockerContext, Work: e.Work,
+		Clones: ws, Redact: redactor.Redact,
+	})
+
+	selfFP, _ := proc.Self()
+	return engine.Config{
+		Store:         store,
+		Specifier:     codexArm,
+		Verifier:      container.NewVerifier(grader, redactor.Secrets()),
+		Implementers:  map[string]engine.Implementer{"openai": codexArm, "anthropic": hermesArm},
+		Reviewers:     map[string]engine.Reviewer{"openai": codexArm, "anthropic": hermesArm},
+		Cloner:        ws,
+		FileExists:    func(string) bool { return true }, // see doc comment above
+		DefaultFamily: "openai",
+		PID:           selfFP.PID,
+		PIDStartedAt:  selfFP.StartedAt,
+	}, nil
+}
+
+func environMap() map[string]string {
+	m := map[string]string{}
+	for _, kv := range os.Environ() {
+		if k, v, ok := strings.Cut(kv, "="); ok {
+			m[k] = v
+		}
+	}
+	return m
 }

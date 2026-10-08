@@ -125,3 +125,44 @@ func TestTaskStoreRunLifecycle(t *testing.T) {
 		t.Fatalf("running after finish = %+v", running)
 	}
 }
+
+func TestRecentTasks(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t)
+	now := time.Now().UTC()
+
+	var created []task.Task
+	for i := 0; i < 3; i++ {
+		tsk, err := s.CreateTask(ctx, task.Task{
+			TaskType:    task.TaskTypeCode,
+			RepoURL:     "/repos/addrepo.git",
+			BaseCommit:  "0123456789abcdef0123456789abcdef01234567",
+			RequestText: "Implement Sub",
+			Status:      task.StatusPending,
+		}, task.NewLinearNodes("", now))
+		if err != nil {
+			t.Fatalf("CreateTask %d: %v", i, err)
+		}
+		created = append(created, tsk)
+	}
+
+	recent, err := s.RecentTasks(ctx, 2)
+	if err != nil {
+		t.Fatalf("RecentTasks: %v", err)
+	}
+	if len(recent) != 2 {
+		t.Fatalf("expected 2 recent tasks (limit), got %d", len(recent))
+	}
+	// Most recently created first.
+	if recent[0].ID != created[2].ID || recent[1].ID != created[1].ID {
+		t.Errorf("expected newest-first order, got %+v", recent)
+	}
+
+	all, err := s.RecentTasks(ctx, 0)
+	if err != nil {
+		t.Fatalf("RecentTasks(0): %v", err)
+	}
+	if len(all) != 3 {
+		t.Errorf("expected limit 0 to mean no limit, got %d", len(all))
+	}
+}

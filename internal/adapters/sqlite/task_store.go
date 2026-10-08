@@ -110,6 +110,45 @@ func (s *Store) UpdateTaskRecordID(ctx context.Context, id string, recordID stri
 	return nil
 }
 
+// RecentTasks returns the most recently created tasks, newest first. limit <= 0 means no
+// limit (used by /tasks and GET /v1/tasks).
+func (s *Store) RecentTasks(ctx context.Context, limit int) ([]task.Task, error) {
+	query := `SELECT id, task_type, repo_url, base_commit, request_text, status, current_node_id, arm, record_id, created_at, updated_at
+		FROM tasks ORDER BY created_at DESC, rowid DESC`
+	args := []any{}
+	if limit > 0 {
+		query += ` LIMIT ?`
+		args = append(args, limit)
+	}
+	rows, err := s.db.QueryContext(ctx, query+";", args...)
+	if err != nil {
+		return nil, fmt.Errorf("query recent tasks: %w", err)
+	}
+	defer rows.Close()
+
+	var out []task.Task
+	for rows.Next() {
+		var t task.Task
+		var cur, arm, rec sql.NullString
+		var created, updated string
+		var st string
+		if err := rows.Scan(&t.ID, &t.TaskType, &t.RepoURL, &t.BaseCommit, &t.RequestText, &st, &cur, &arm, &rec, &created, &updated); err != nil {
+			return nil, fmt.Errorf("scan recent task: %w", err)
+		}
+		t.Status = task.TaskStatus(st)
+		t.CurrentNodeID = cur.String
+		t.Arm = arm.String
+		t.RecordID = rec.String
+		t.CreatedAt, _ = time.Parse(tsLayout, created)
+		t.UpdatedAt, _ = time.Parse(tsLayout, updated)
+		out = append(out, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate recent tasks: %w", err)
+	}
+	return out, nil
+}
+
 func (s *Store) UpdateTaskStatus(ctx context.Context, id string, status task.TaskStatus, currentNodeID string) error {
 	at := s.clock()
 	return s.withTx(ctx, func(tx *sql.Tx) error {

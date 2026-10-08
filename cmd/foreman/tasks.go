@@ -1,0 +1,100 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/dpcamargo/foreman/internal/core/engine"
+	"github.com/dpcamargo/foreman/internal/core/task"
+)
+
+// taskStore is the persistence subset tasks.go needs — the parts of *sqlite.Store this
+// file calls, declared locally since cmd/ wiring code has no business importing a store
+// interface from core (it already has the concrete adapter).
+type taskStore interface {
+	task.TaskStore
+	RecentTasks(ctx context.Context, limit int) ([]task.Task, error)
+}
+
+// dispatcher is the subset of *engine.Supervisor createTask needs, declared locally for the
+// same reason, and so tests can use a fake instead of a real Supervisor.
+type dispatcher interface {
+	Dispatch(ctx context.Context, params engine.RunParams)
+}
+
+// resolveBaseCommit resolves repoURL's current commit so a Telegram-created task has a
+// concrete, pinned base_commit (FR-004 applies the same way to daemon-dispatched tasks as
+// to fm run's task.yaml). Overridable in tests.
+var resolveBaseCommit = func(ctx context.Context, repoURL string) (string, error) {
+	return gitResolveHEAD(ctx, repoURL)
+}
+
+// createTask creates a pending task.Task for repoURL/requestText and hands it to sup for
+// dispatch, returning immediately with the new task id (spec US1: "/task" acknowledges
+// within seconds, the loop itself runs in the background).
+func createTask(ctx context.Context, store taskStore, sup dispatcher, repoURL, requestText string) (task.Task, error) {
+	repoURL = strings.TrimSpace(repoURL)
+	requestText = strings.TrimSpace(requestText)
+	if repoURL == "" {
+		return task.Task{}, fmt.Errorf("repo is required")
+	}
+	if requestText == "" {
+		return task.Task{}, fmt.Errorf("request text is required")
+	}
+
+	baseCommit, err := resolveBaseCommit(ctx, repoURL)
+	if err != nil {
+		return task.Task{}, fmt.Errorf("resolve base commit for %s: %w", repoURL, err)
+	}
+
+	now := time.Now().UTC()
+	tsk := task.Task{
+		ID:          task.NewID("tsk"),
+		TaskType:    task.TaskTypeCode,
+		RepoURL:     repoURL,
+		BaseCommit:  baseCommit,
+		RequestText: requestText,
+		Status:      task.StatusPending,
+	}
+	nodes := task.NewLinearNodes(tsk.ID, now)
+	created, err := store.CreateTask(ctx, tsk, nodes)
+	if err != nil {
+		return task.Task{}, fmt.Errorf("create task: %w", err)
+	}
+
+	sup.Dispatch(context.WithoutCancel(ctx), engine.RunParams{Task: created})
+	return created, nil
+}
+
+// formatTaskStatus renders a /status reply: current phase, attempts so far, overall status.
+func formatTaskStatus(tsk task.Task, nodes []task.Node) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s: %s\n", tsk.ID, tsk.Status)
+	fmt.Fprintf(&b, "repo: %s\n", tsk.RepoURL)
+	for _, n := range nodes {
+		fmt.Fprintf(&b, "  %s: %s\n", n.Name, n.Status)
+	}
+	return strings.TrimRight(b.String(), "\n")
+}
+
+// formatTaskList renders a /tasks reply: one line per task, newest first (as RecentTasks
+// already orders them).
+func formatTaskList(tasks []task.Task) string {
+	if len(tasks) == 0 {
+		return "no tasks yet"
+	}
+	var b strings.Builder
+	for _, t := range tasks {
+		fmt.Fprintf(&b, "%s  %-13s  %s\n", t.ID, t.Status, truncate(t.RequestText, 60))
+	}
+	return strings.TrimRight(b.String(), "\n")
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
+}
