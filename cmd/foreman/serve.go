@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/dpcamargo/foreman/internal/adapters/container"
 	"github.com/dpcamargo/foreman/internal/adapters/integrator"
@@ -106,6 +107,10 @@ func serve(ctx context.Context, e env, stdout, stderr io.Writer) int {
 	}
 	serveErrCh := make(chan error, 1)
 	go func() { serveErrCh <- api.Serve() }()
+
+	// T045/T046 housekeeping tick: retention sweep + unanswered-approval ntfy ping
+	// (FR-018, spec.md Assumptions' 4h threshold).
+	go startHousekeepingTicker(ctx, e, store, ntfyForEnv(e), stdout, time.Hour)
 
 	if telegramClient != nil {
 		go pollTelegram(ctx, telegramClient, store, sup)

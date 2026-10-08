@@ -26,6 +26,7 @@ type env struct {
 	GitHubToken   string // "" disables US4's delivery/merge gate; same .env as Telegram
 	GitHubOwner   string
 	GitHubRepo    string
+	NtfyTopicURL  string // "" disables the secondary-channel ping (T046)
 }
 
 func loadEnv(getenv func(string) string, homeDir func() (string, error)) (env, error) {
@@ -60,6 +61,7 @@ func loadEnv(getenv func(string) string, homeDir func() (string, error)) (env, e
 		GitHubToken:   getenv("FOREMAN_GITHUB_TOKEN"),
 		GitHubOwner:   getenv("FOREMAN_GITHUB_OWNER"),
 		GitHubRepo:    getenv("FOREMAN_GITHUB_REPO"),
+		NtfyTopicURL:  getenv("FOREMAN_NTFY_TOPIC_URL"),
 	}, nil
 }
 
