@@ -21,6 +21,17 @@ type Config struct {
 	DefaultFamily string
 	PID           int
 	PIDStartedAt  string
+	// ApprovalGate, if set, is called once after the spec passes ValidateTaskSpec and
+	// before the implement ladder starts. It blocks until a human approves or rejects the
+	// spec (Feature 003's Telegram/local-API control plane). nil means no gate at all —
+	// fm run (Feature 002) never sets this field, so its behavior is unchanged
+	// (specs/003-daemon-telegram-control/research.md R7).
+	ApprovalGate func(ctx context.Context, spec TaskSpec) (approved bool, err error)
+	// PauseCheck, if set, is checked once at the top of every ladder iteration (before the
+	// next implement attempt starts). A true result stops the ladder without killing the
+	// attempt in flight, leaving the task running for a later resume. nil is a no-op, for
+	// the same reason as ApprovalGate (research.md R7 addendum).
+	PauseCheck func(taskID string) bool
 }
 
 type Engine struct {
@@ -105,6 +116,28 @@ func (e *Engine) RunTask(ctx context.Context, params RunParams) (TaskReport, err
 	}
 	_ = e.cfg.Store.UpdateNodeStatus(ctx, specNode.ID, task.NodeStatusSucceeded)
 
+	// Spec-approval gate (research.md R7): nil is a no-op, preserving Feature 002's
+	// behavior byte-for-byte for callers (fm run) that never set it.
+	if e.cfg.ApprovalGate != nil {
+		approved, err := e.cfg.ApprovalGate(ctx, spec)
+		if err != nil {
+			return TaskReport{}, fmt.Errorf("approval gate: %w", err)
+		}
+		if !approved {
+			_ = tsk.Fail(time.Now().UTC())
+			_ = e.cfg.Store.UpdateTaskStatus(ctx, tsk.ID, task.StatusFailed, specNode.ID)
+			return TaskReport{
+				TaskID:      tsk.ID,
+				Status:      task.StatusFailed,
+				RepoURL:     tsk.RepoURL,
+				BaseCommit:  tsk.BaseCommit,
+				RequestText: tsk.RequestText,
+				SpecSummary: spec.Summary,
+				CreatedAt:   now,
+			}, nil
+		}
+	}
+
 	// 2. IMPLEMENT & VERIFY LOOP
 	implNode := nodes[1]
 	verifyNode := nodes[2]
@@ -121,6 +154,23 @@ func (e *Engine) RunTask(ctx context.Context, params RunParams) (TaskReport, err
 	var verified bool
 
 	for attemptNum <= 10 {
+		if e.cfg.PauseCheck != nil && e.cfg.PauseCheck(tsk.ID) {
+			_ = tsk.Pause(time.Now().UTC())
+			_ = e.cfg.Store.UpdateTaskStatus(ctx, tsk.ID, tsk.Status, implNode.ID)
+			return TaskReport{
+				TaskID:      tsk.ID,
+				Status:      task.StatusPaused,
+				RepoURL:     tsk.RepoURL,
+				BaseCommit:  tsk.BaseCommit,
+				RequestText: tsk.RequestText,
+				Attempts:    attemptNum - 1,
+				LadderRung:  currentRung,
+				TokensTotal: totalTokens,
+				WallTotal:   time.Since(startTime),
+				SpecSummary: spec.Summary,
+				CreatedAt:   now,
+			}, nil
+		}
 		impl, ok := e.cfg.Implementers[currentFamily]
 		if !ok {
 			return TaskReport{}, fmt.Errorf("no implementer configured for family %s", currentFamily)

@@ -97,6 +97,82 @@ func TestTaskStateTransitions(t *testing.T) {
 	}
 }
 
+func TestTaskPauseResumeCancel(t *testing.T) {
+	now := time.Now().UTC()
+	newTask := func(status task.TaskStatus) task.Task {
+		return task.Task{
+			ID:          "tsk_1",
+			TaskType:    task.TaskTypeCode,
+			RepoURL:     "/repo.git",
+			BaseCommit:  validSHA,
+			RequestText: "Do something",
+			Status:      status,
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		}
+	}
+
+	t.Run("pause running then resume", func(t *testing.T) {
+		tsk := newTask(task.StatusRunning)
+		if err := tsk.Pause(now); err != nil {
+			t.Fatalf("pause: %v", err)
+		}
+		if tsk.Status != task.StatusPaused {
+			t.Errorf("expected paused, got %s", tsk.Status)
+		}
+		if err := tsk.Resume(now); err != nil {
+			t.Fatalf("resume: %v", err)
+		}
+		if tsk.Status != task.StatusRunning {
+			t.Errorf("expected running after resume, got %s", tsk.Status)
+		}
+	})
+
+	t.Run("cannot pause a pending task", func(t *testing.T) {
+		tsk := newTask(task.StatusPending)
+		if err := tsk.Pause(now); err == nil {
+			t.Error("expected error pausing a pending task, got nil")
+		}
+	})
+
+	t.Run("cannot resume a task that isn't paused", func(t *testing.T) {
+		tsk := newTask(task.StatusRunning)
+		if err := tsk.Resume(now); err == nil {
+			t.Error("expected error resuming a non-paused task, got nil")
+		}
+	})
+
+	for _, from := range []task.TaskStatus{
+		task.StatusPending, task.StatusRunning, task.StatusBlockedHuman, task.StatusPaused,
+	} {
+		t.Run("cancel from "+string(from), func(t *testing.T) {
+			tsk := newTask(from)
+			if err := tsk.Cancel(now); err != nil {
+				t.Fatalf("cancel from %s: %v", from, err)
+			}
+			if tsk.Status != task.StatusCancelled {
+				t.Errorf("expected cancelled, got %s", tsk.Status)
+			}
+		})
+	}
+
+	t.Run("cannot cancel an already-cancelled task", func(t *testing.T) {
+		tsk := newTask(task.StatusCancelled)
+		if err := tsk.Cancel(now); err == nil {
+			t.Error("expected error cancelling an already-cancelled task, got nil")
+		}
+	})
+
+	for _, terminal := range []task.TaskStatus{task.StatusSucceeded, task.StatusFailed} {
+		t.Run("cannot cancel terminal status "+string(terminal), func(t *testing.T) {
+			tsk := newTask(terminal)
+			if err := tsk.Cancel(now); err == nil {
+				t.Errorf("expected error cancelling a %s task, got nil", terminal)
+			}
+		})
+	}
+}
+
 func TestLinearNodesGeneration(t *testing.T) {
 	now := time.Now().UTC()
 	nodes := task.NewLinearNodes("tsk_1", now)

@@ -2,6 +2,7 @@ package engine_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -11,6 +12,7 @@ import (
 )
 
 type fakeStore struct {
+	mu    sync.Mutex
 	tasks map[string]task.Task
 	nodes map[string]task.Node
 	runs  []task.Run
@@ -24,6 +26,8 @@ func newFakeStore() *fakeStore {
 }
 
 func (s *fakeStore) CreateTask(ctx context.Context, t task.Task, nodes []task.Node) (task.Task, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.tasks[t.ID] = t
 	for _, n := range nodes {
 		s.nodes[n.ID] = n
@@ -32,6 +36,8 @@ func (s *fakeStore) CreateTask(ctx context.Context, t task.Task, nodes []task.No
 }
 
 func (s *fakeStore) Task(ctx context.Context, id string) (task.Task, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	t, ok := s.tasks[id]
 	if !ok {
 		return task.Task{}, task.ErrNotFound
@@ -40,6 +46,8 @@ func (s *fakeStore) Task(ctx context.Context, id string) (task.Task, error) {
 }
 
 func (s *fakeStore) UpdateTaskStatus(ctx context.Context, id string, status task.TaskStatus, currentNodeID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	t := s.tasks[id]
 	t.Status = status
 	t.CurrentNodeID = currentNodeID
@@ -48,6 +56,8 @@ func (s *fakeStore) UpdateTaskStatus(ctx context.Context, id string, status task
 }
 
 func (s *fakeStore) Node(ctx context.Context, id string) (task.Node, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	n, ok := s.nodes[id]
 	if !ok {
 		return task.Node{}, task.ErrNotFound
@@ -56,6 +66,8 @@ func (s *fakeStore) Node(ctx context.Context, id string) (task.Node, error) {
 }
 
 func (s *fakeStore) NodesForTask(ctx context.Context, taskID string) ([]task.Node, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var res []task.Node
 	for _, n := range s.nodes {
 		if n.TaskID == taskID {
@@ -66,6 +78,8 @@ func (s *fakeStore) NodesForTask(ctx context.Context, taskID string) ([]task.Nod
 }
 
 func (s *fakeStore) UpdateNodeStatus(ctx context.Context, id string, status task.NodeStatus) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	n := s.nodes[id]
 	n.Status = status
 	s.nodes[id] = n
@@ -73,11 +87,15 @@ func (s *fakeStore) UpdateNodeStatus(ctx context.Context, id string, status task
 }
 
 func (s *fakeStore) RecordTaskRun(ctx context.Context, r task.Run) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.runs = append(s.runs, r)
 	return nil
 }
 
 func (s *fakeStore) FinishTaskRun(ctx context.Context, runID string, status task.RunStatus, failureClass task.FailureClass, failureSig string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	for i, r := range s.runs {
 		if r.ID == runID {
 			s.runs[i].Status = status

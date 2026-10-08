@@ -15,8 +15,8 @@ All tasks follow test-first development (AGENTS.md): write tests first, ensure t
 
 **Purpose**: New binary skeleton and static deploy artifact
 
-- [ ] T001 [P] Create `cmd/foreman/main.go` skeleton (exit codes, `usage()`, `run(args, stdout, stderr) int` returning usage help only — no wiring yet), mirroring `cmd/fm/main.go`'s existing pattern
-- [ ] T002 [P] Create `deploy/launchd/com.foreman.plist` referencing the `cmd/foreman` binary path, `$FOREMAN_HOME`, and `KeepAlive`/`RunAtLoad` for launchd restart-on-crash (ARCHITECTURE.md §14)
+- [X] T001 [P] Create `cmd/foreman/main.go` skeleton (exit codes, `usage()`, `run(args, stdout, stderr) int` returning usage help only — no wiring yet), mirroring `cmd/fm/main.go`'s existing pattern
+- [X] T002 [P] Create `deploy/launchd/com.foreman.plist` referencing the `cmd/foreman` binary path, `$FOREMAN_HOME`, and `KeepAlive`/`RunAtLoad` for launchd restart-on-crash (ARCHITECTURE.md §14)
 
 ---
 
@@ -26,18 +26,18 @@ All tasks follow test-first development (AGENTS.md): write tests first, ensure t
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Write `migrations/0004_daemon_control.sql`: rebuild `tasks` with `'paused'`/`'cancelled'` added to its status CHECK constraint (SQLite table-rebuild pattern); create `approvals`, `allowlist`, `outbox_cursors`, `deliveries` per data-model.md
-- [ ] T004 [P] Write `internal/core/task/task_test.go` additions: table-driven tests for `Task.Pause(now)`, `Task.Resume(now)`, `Task.Cancel(now)` transition validity (e.g. cannot cancel an already-cancelled task, cannot resume a task that isn't paused)
-- [ ] T005 [P] Extend `internal/core/task/task.go`: add `StatusPaused`, `StatusCancelled` constants and the `Pause`/`Resume`/`Cancel` methods to pass T004
-- [ ] T006 [P] Write `internal/core/control/approval_test.go`: table-driven tests for `ValidateApproval` — pending-only, nonce mismatch, subject-sha256 mismatch (stale artifact), success case (contracts/approval-nonce.md)
-- [ ] T007 [P] Create `internal/core/control/approval.go`: `Approval` struct, nonce generation (`crypto/rand`, hex-encoded), `ValidateApproval(a Approval, suppliedNonce, currentSubjectSHA256 string) error` using `crypto/subtle.ConstantTimeCompare` for the nonce check, to pass T006
-- [ ] T008 [P] Write `internal/core/control/allowlist_test.go`: unit tests for `IsAllowed(userID int64)` against a fake store (allowed id, unknown id, zero id)
-- [ ] T009 [P] Create `internal/core/control/allowlist.go`: `Allowlist` type declaring the store interface it needs and `IsAllowed`, to pass T008
-- [ ] T010 [P] Write `internal/core/control/outbox_test.go`: unit tests for coalescing multiple events after a cursor position into one digest batch, and a no-op when there are no new events
-- [ ] T011 [P] Create `internal/core/control/outbox.go`: pure `AdvanceOutbox(events []Event, cursor int64) (digest Digest, newCursor int64)` function, to pass T010
-- [ ] T012 Write `internal/core/engine/supervisor_test.go`: unit tests with the existing `fakeStore`/`fakeCloner` pattern from `engine_test.go` — bounded concurrency (a 3rd dispatched task waits for a slot), `Cancel(taskID)` aborts a running dispatch via context cancellation, graceful pause stops before the next ladder attempt without killing the current one, and a task whose `engine.Config.ApprovalGate` blocks is resumed once the gate function returns
-- [ ] T013 Create `internal/core/engine/supervisor.go`: `Supervisor` with a bounded semaphore (default concurrency 2), `Dispatch(ctx, task.Task)` running `engine.RunTask` in a goroutine, `map[taskID]context.CancelFunc`, `Cancel(taskID)`, `PauseGraceful(taskID)`/`ResumeGraceful(taskID)`, to pass T012
-- [ ] T014 Extend `internal/core/engine/ports.go`/`engine.go`: add optional `Config.ApprovalGate func(ctx context.Context, spec TaskSpec) (approved bool, err error)` field, called once after `ValidateTaskSpec` succeeds and before the implement ladder starts; confirm all existing `engine_test.go` cases still pass unmodified with the field left `nil` (research.md R7)
+- [X] T003 Write `migrations/0004_daemon_control.sql`: rebuild `tasks` with `'paused'`/`'cancelled'` added to its status CHECK constraint (SQLite table-rebuild pattern); create `approvals`, `allowlist`, `outbox_cursors`, `deliveries` per data-model.md
+- [X] T004 [P] Write `internal/core/task/task_test.go` additions: table-driven tests for `Task.Pause(now)`, `Task.Resume(now)`, `Task.Cancel(now)` transition validity (e.g. cannot cancel an already-cancelled task, cannot resume a task that isn't paused)
+- [X] T005 [P] Extend `internal/core/task/task.go`: add `StatusPaused`, `StatusCancelled` constants and the `Pause`/`Resume`/`Cancel` methods to pass T004
+- [X] T006 [P] Write `internal/core/control/approval_test.go`: table-driven tests for `ValidateApproval` — pending-only, nonce mismatch, subject-sha256 mismatch (stale artifact), success case (contracts/approval-nonce.md)
+- [X] T007 [P] Create `internal/core/control/approval.go`: `Approval` struct, nonce generation (`crypto/rand`, hex-encoded), `ValidateApproval(a Approval, suppliedNonce, currentSubjectSHA256 string) error` using `crypto/subtle.ConstantTimeCompare` for the nonce check, to pass T006
+- [X] T008 [P] Write `internal/core/control/allowlist_test.go`: unit tests for `IsAllowed(userID int64)` against a fake store (allowed id, unknown id, zero id)
+- [X] T009 [P] Create `internal/core/control/allowlist.go`: `Allowlist` type declaring the store interface it needs and `IsAllowed`, to pass T008
+- [X] T010 [P] Write `internal/core/control/outbox_test.go`: unit tests for coalescing multiple events after a cursor position into one digest batch, and a no-op when there are no new events
+- [X] T011 [P] Create `internal/core/control/outbox.go`: pure `AdvanceOutbox(events []Event, cursor int64) (digest Digest, newCursor int64)` function, to pass T010
+- [X] T012 Write `internal/core/engine/supervisor_test.go`: unit tests with the existing `fakeStore`/`fakeCloner` pattern from `engine_test.go` — bounded concurrency (a 3rd dispatched task waits for a slot), `Cancel(taskID)` aborts a running dispatch via context cancellation, graceful pause stops before the next ladder attempt without killing the current one, and a task whose `engine.Config.ApprovalGate` blocks is resumed once the gate function returns
+- [X] T013 Create `internal/core/engine/supervisor.go`: `Supervisor` with a bounded semaphore (default concurrency 2), `Dispatch(ctx, task.Task)` running `engine.RunTask` in a goroutine, `map[taskID]context.CancelFunc`, `Cancel(taskID)`, `PauseGraceful(taskID)`/`ResumeGraceful(taskID)`, to pass T012
+- [X] T014 Extend `internal/core/engine/ports.go`/`engine.go`: add optional `Config.ApprovalGate func(ctx context.Context, spec TaskSpec) (approved bool, err error)` field, called once after `ValidateTaskSpec` succeeds and before the implement ladder starts; confirm all existing `engine_test.go` cases still pass unmodified with the field left `nil` (research.md R7)
 - [ ] T015 [P] Write `internal/adapters/sqlite/control_store_test.go`: adapter tests against real SQLite for approvals/allowlist/outbox_cursors/deliveries CRUD (existing `openTest(t)` pattern from `task_store_test.go`)
 - [ ] T016 [P] Create `internal/adapters/sqlite/control_store.go`: implements the store interfaces `internal/core/control` declares, to pass T015
 - [ ] T017 Write `internal/adapters/localapi/server_test.go`: a same-UID unix-socket connection is served; a connection whose peer UID doesn't match the listener's own process UID is closed with no response (simulate via a second process or a stubbed peer-cred check in the test)

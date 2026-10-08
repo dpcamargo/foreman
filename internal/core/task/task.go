@@ -28,6 +28,8 @@ const (
 	StatusSucceeded    TaskStatus = "succeeded"
 	StatusFailed       TaskStatus = "failed"
 	StatusBlockedHuman TaskStatus = "blocked_human"
+	StatusPaused       TaskStatus = "paused"
+	StatusCancelled    TaskStatus = "cancelled"
 )
 
 type Task struct {
@@ -92,6 +94,39 @@ func (t *Task) BlockHuman(now time.Time) error {
 		return fmt.Errorf("%w: cannot block task from status %s", ErrInvalidTransition, t.Status)
 	}
 	t.Status = StatusBlockedHuman
+	t.UpdatedAt = now
+	return nil
+}
+
+// Pause implements Feature 003's "/pause <id>": stop new dispatch, let the running attempt
+// finish (FR-008). Only a running task can be paused.
+func (t *Task) Pause(now time.Time) error {
+	if t.Status != StatusRunning {
+		return fmt.Errorf("%w: cannot pause task from status %s", ErrInvalidTransition, t.Status)
+	}
+	t.Status = StatusPaused
+	t.UpdatedAt = now
+	return nil
+}
+
+// Resume implements Feature 003's "/resume <id>": the dispatch loop picks the task back up.
+func (t *Task) Resume(now time.Time) error {
+	if t.Status != StatusPaused {
+		return fmt.Errorf("%w: cannot resume task from status %s", ErrInvalidTransition, t.Status)
+	}
+	t.Status = StatusRunning
+	t.UpdatedAt = now
+	return nil
+}
+
+// Cancel implements Feature 003's "/cancel <id>": kill process groups/containers for this
+// task and mark it cancelled (FR-009). Any non-terminal status may be cancelled.
+func (t *Task) Cancel(now time.Time) error {
+	switch t.Status {
+	case StatusSucceeded, StatusFailed, StatusCancelled:
+		return fmt.Errorf("%w: cannot cancel task from terminal status %s", ErrInvalidTransition, t.Status)
+	}
+	t.Status = StatusCancelled
 	t.UpdatedAt = now
 	return nil
 }

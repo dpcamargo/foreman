@@ -166,3 +166,12 @@ methods the daemon calls one at a time — rejected for this feature: it's a big
 tested Feature 002 code than the gate hook, and Feature 006 (DAG decomposition) is where
 `engine.RunTask`'s monolithic shape is expected to change anyway; doing it piecemeal now risks
 two half-migrations.
+
+**R7 addendum — graceful pause needs the same treatment**: `/pause <id>` (FR-008, without
+`now`) must stop the ladder before its *next* attempt, not kill the one in flight — but nothing
+inside `RunTask`'s `for attemptNum <= 10` loop currently checks anything between attempts
+either. `Config` gains a second optional, nil-safe field for exactly this:
+`PauseCheck func(taskID string) bool`, checked once at the top of each ladder iteration (T013's
+implementation). `nil` is a no-op for the same byte-for-byte reason as `ApprovalGate`. `/pause
+<id> now` is unaffected — it uses the existing per-dispatch `context.CancelFunc` the Supervisor
+already holds, which Feature 002's runners already thread through `exec.CommandContext`.
