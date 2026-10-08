@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TaskSpec",
+  "description": "Structured output from the specify step in Feature 002 (FR-004)",
+  "type": "object",
+  "required": ["summary", "acceptance_criteria", "verify_commands", "cited_files"],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "High-level summary of the implementation approach"
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of testable acceptance criteria"
+    },
+    "verify_commands": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "description": "List of command argv arrays to verify the criteria"
+    },
+    "cited_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths in the repository that are inspected or touched"
+    }
+  },
+  "additionalProperties": false
+}

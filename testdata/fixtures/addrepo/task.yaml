@@ -1,0 +1,8 @@
+version: 1
+task_type: code
+repo: ~/.foreman/work/fixtures/addrepo.git
+base_commit: 4c979416b80fd702664709a8af97bf3b17a9ec89
+request: "Add a function `Sub(a, b int) int` to package addrepo that returns a - b."
+hidden_tests: testdata/fixtures/addrepo/hidden
+test_cmd: ["go", "test", "-json", "./..."]
+category: feature

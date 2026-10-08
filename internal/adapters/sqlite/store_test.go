@@ -8,11 +8,13 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
 
 	"github.com/dpcamargo/foreman/internal/core/eval"
+	"github.com/dpcamargo/foreman/migrations"
 )
 
 func openTest(t *testing.T) *Store {
@@ -338,8 +340,15 @@ func TestMigrationsAreIdempotent(t *testing.T) {
 		if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM schema_migrations`).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
-		if n != 2 {
-			t.Errorf("open #%d: schema_migrations has %d rows, want 2", i+1, n)
+		entries, _ := fs.ReadDir(migrations.FS, ".")
+		want := 0
+		for _, e := range entries {
+			if strings.HasSuffix(e.Name(), ".sql") {
+				want++
+			}
+		}
+		if n != want {
+			t.Errorf("open #%d: schema_migrations has %d rows, want %d", i+1, n, want)
 		}
 		s.Close()
 	}
