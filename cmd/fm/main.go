@@ -31,6 +31,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return exitOK
 	case "eval":
 		return runEval(args[1:], stdout, stderr)
+	case "run":
+		return runRun(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "fm: unknown command %q\n\n", args[0])
 		usage(stderr)
@@ -43,6 +45,7 @@ func usage(w io.Writer) {
 
 commands:
   eval    record tasks and replay them through single-agent baselines
+  run     execute a task through the durable execution loop
   help    show this help
 
 Run "fm eval help" for the eval subcommands.

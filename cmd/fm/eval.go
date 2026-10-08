@@ -20,6 +20,7 @@ import (
 	"github.com/dpcamargo/foreman/internal/adapters/container"
 	"github.com/dpcamargo/foreman/internal/adapters/proc"
 	"github.com/dpcamargo/foreman/internal/adapters/runner/codex"
+	"github.com/dpcamargo/foreman/internal/adapters/runner/harness"
 	"github.com/dpcamargo/foreman/internal/adapters/runner/hermes"
 	"github.com/dpcamargo/foreman/internal/adapters/sandbox"
 	"github.com/dpcamargo/foreman/internal/adapters/sqlite"
@@ -612,6 +613,27 @@ func (a *app) arm(ctx context.Context, name string) (eval.Arm, error) {
 			return hermes.NewOneshot(cfg), nil
 		}
 		return hermes.NewKanbanGoal(cfg), nil
+	case "h1":
+		// Feature 002's durable loop as an eval arm (FR-022): Codex specifies and
+		// implements, Hermes reviews cross-family, and the harness runs spec ->
+		// implement -> review inside one eval workspace.
+		goroot, err := exec.CommandContext(ctx, "go", "env", "GOROOT").Output()
+		if err != nil {
+			return nil, fmt.Errorf("go env GOROOT: %w", err)
+		}
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		codexArm := codex.New(codex.Config{
+			GoRoot: strings.TrimSpace(string(goroot)), ModCache: filepath.Join(a.env.Work, "gomodcache"),
+			Home: home, Path: os.Getenv("PATH"), CodexHome: os.Getenv("CODEX_HOME"),
+			ToolRoots: toolRoots("codex"),
+		})
+		hermesCfg := hermes.Config{HermesHome: a.env.HermesHome, ModCache: filepath.Join(a.env.Work, "gomodcache")}
+		return harness.NewH1(harness.H1Config{
+			Specifier: codexArm, Implementer: codexArm, Reviewer: hermes.NewOneshot(hermesCfg),
+		}), nil
 	default:
 		return nil, usageErr("arm %s is not available yet", base)
 	}
