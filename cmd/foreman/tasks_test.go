@@ -20,6 +20,7 @@ type fakeTaskStore struct {
 	approvals  map[string]control.Approval
 	allowed    []int64
 	deliveries map[string]sqlite.Delivery
+	runs       []task.Run
 }
 
 func newFakeTaskStore() *fakeTaskStore {
@@ -62,7 +63,41 @@ func (s *fakeTaskStore) NodesForTask(ctx context.Context, taskID string) ([]task
 func (s *fakeTaskStore) UpdateNodeStatus(ctx context.Context, id string, status task.NodeStatus) error {
 	return nil
 }
-func (s *fakeTaskStore) RecordTaskRun(ctx context.Context, r task.Run) error { return nil }
+func (s *fakeTaskStore) RecordTaskRun(ctx context.Context, r task.Run) error {
+	s.runs = append(s.runs, r)
+	return nil
+}
+func (s *fakeTaskStore) RunsForTask(ctx context.Context, taskID, nodeID string) ([]task.Run, error) {
+	var out []task.Run
+	for _, r := range s.runs {
+		if r.TaskID != taskID {
+			continue
+		}
+		if nodeID != "" && r.NodeID != nodeID {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out, nil
+}
+func (s *fakeTaskStore) BudgetSummary(ctx context.Context) (sqlite.BudgetSummaryResult, error) {
+	var out sqlite.BudgetSummaryResult
+	byTask := map[string]*sqlite.TaskBudget{}
+	for _, r := range s.runs {
+		out.TotalTokensBillable += r.TokensBillable
+		b, ok := byTask[r.TaskID]
+		if !ok {
+			b = &sqlite.TaskBudget{TaskID: r.TaskID}
+			byTask[r.TaskID] = b
+		}
+		b.TokensBillable += r.TokensBillable
+		b.Runs++
+	}
+	for _, b := range byTask {
+		out.ByTask = append(out.ByTask, *b)
+	}
+	return out, nil
+}
 func (s *fakeTaskStore) FinishTaskRun(ctx context.Context, runID string, status task.RunStatus, failureClass task.FailureClass, failureSig string) error {
 	return nil
 }

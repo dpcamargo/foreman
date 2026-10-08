@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
+	"github.com/dpcamargo/foreman/internal/adapters/sqlite"
 	"github.com/dpcamargo/foreman/internal/adapters/telegram"
 	"github.com/dpcamargo/foreman/internal/core/control"
+	"github.com/dpcamargo/foreman/internal/core/task"
 )
 
 // messageSender is the subset of *telegram.Client handleUpdate needs, declared locally so
@@ -17,11 +20,14 @@ type messageSender interface {
 }
 
 // fullStore is everything handleUpdate needs from the store: task CRUD/listing plus
-// approval and delivery lookup (for /diff and merge callbacks).
+// approval and delivery lookup (for /diff and merge callbacks), and run/budget queries for
+// /logs and /budget.
 type fullStore interface {
 	taskStore
 	deliverApprovalStore
 	approvalResolver
+	RunsForTask(ctx context.Context, taskID, nodeID string) ([]task.Run, error)
+	BudgetSummary(ctx context.Context) (sqlite.BudgetSummaryResult, error)
 }
 
 // dispatcherApprovals is everything handleUpdate needs to dispatch and resolve approvals.
@@ -194,6 +200,34 @@ func handleUpdate(ctx context.Context, store fullStore, sup dispatcherApprovals,
 			reply(ctx, sender, chatID, "could not send diff: "+err.Error())
 		}
 
+	case "logs":
+		if len(cmd.Args) == 0 {
+			reply(ctx, sender, chatID, "usage: /logs <id> [node]")
+			return
+		}
+		nodeFilter := ""
+		if len(cmd.Args) > 1 {
+			nodeFilter = cmd.Args[1]
+		}
+		runs, err := store.RunsForTask(ctx, cmd.Args[0], nodeFilter)
+		if err != nil {
+			reply(ctx, sender, chatID, "could not load logs: "+err.Error())
+			return
+		}
+		if len(runs) == 0 {
+			reply(ctx, sender, chatID, "no runs recorded for "+cmd.Args[0])
+			return
+		}
+		reply(ctx, sender, chatID, formatRunLogs(runs))
+
+	case "budget":
+		summary, err := store.BudgetSummary(ctx)
+		if err != nil {
+			reply(ctx, sender, chatID, "could not load budget: "+err.Error())
+			return
+		}
+		reply(ctx, sender, chatID, formatBudgetSummary(summary))
+
 	case "help":
 		reply(ctx, sender, chatID, helpText)
 
@@ -205,6 +239,36 @@ func handleUpdate(ctx context.Context, store fullStore, sup dispatcherApprovals,
 // mergePusher is set once in serve.go alongside dispatchOnDone (same reason: the
 // integrator doesn't exist at package-init time). nil means merge callbacks are ignored.
 var mergePusher pusher
+
+// formatRunLogs renders a /logs reply: one line per run, newest first (as RunsForTask
+// already orders them), including the node and any recorded error output.
+func formatRunLogs(runs []task.Run) string {
+	var b strings.Builder
+	for _, r := range runs {
+		fmt.Fprintf(&b, "%s [%s] %s", r.ID, r.NodeID, r.Status)
+		if r.FailureSig != "" {
+			fmt.Fprintf(&b, " (%s)", r.FailureSig)
+		}
+		b.WriteString("\n")
+		if r.Error != "" {
+			fmt.Fprintf(&b, "  %s\n", r.Error)
+		}
+	}
+	return b.String()
+}
+
+// formatBudgetSummary renders a /budget reply: total spend plus one line per task.
+func formatBudgetSummary(s sqlite.BudgetSummaryResult) string {
+	if len(s.ByTask) == 0 {
+		return "no runs recorded yet"
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "total: %d billable tokens across %d task(s)\n", s.TotalTokensBillable, len(s.ByTask))
+	for _, t := range s.ByTask {
+		fmt.Fprintf(&b, "%s: %d tokens (%d run(s))\n", t.TaskID, t.TokensBillable, t.Runs)
+	}
+	return b.String()
+}
 
 // handleCallbackQuery applies an inline-button tap: [Approve] or [Reject] on a spec
 // approval. The nonce in the callback data is the single enforcement point
@@ -238,6 +302,8 @@ const helpText = `commands:
 /status [id]                  show a task's progress (omit id for the most recent)
 /tasks                        list recent tasks
 /diff <id>                    send a delivered task's patch as a .patch file
+/logs <id> [node]             show recent run output for a task, optionally one node
+/budget                       show spend/quota summary across active tasks
 /help                         show this help`
 
 func reply(ctx context.Context, sender messageSender, chatID int64, text string) {

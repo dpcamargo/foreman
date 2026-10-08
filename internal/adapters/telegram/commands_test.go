@@ -106,6 +106,24 @@ func TestParseCommand(t *testing.T) {
 			wantCmd: telegram.Command{Name: "cancel", Args: []string{"tsk_123"}},
 		},
 		{
+			name:    "logs with id and node",
+			text:    "/logs tsk_123 impl",
+			wantOK:  true,
+			wantCmd: telegram.Command{Name: "logs", Args: []string{"tsk_123", "impl"}},
+		},
+		{
+			name:    "logs with id only",
+			text:    "/logs tsk_123",
+			wantOK:  true,
+			wantCmd: telegram.Command{Name: "logs", Args: []string{"tsk_123"}},
+		},
+		{
+			name:    "budget",
+			text:    "/budget",
+			wantOK:  true,
+			wantCmd: telegram.Command{Name: "budget", Args: nil},
+		},
+		{
 			name:   "not a command",
 			text:   "hello there",
 			wantOK: false,

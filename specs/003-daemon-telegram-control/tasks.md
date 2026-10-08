@@ -157,10 +157,10 @@ a Telegram message to a merged PR, gated by two separate nonce-bound approvals.
 
 **Purpose**: Retention, housekeeping, and end-to-end quality gates
 
-- [ ] T044 [P] Write `internal/core/control/retention_test.go`: pure tests for the retention decision function — given a kind (transcript/container-output/successful-workspace/cancelled-workspace) and an age, returns whether it should be swept, per data-model.md's Retention section (90d / 7d-configurable-to-14 / immediate-on-success / 7d respectively); structured SQLite rows are never selected for deletion by this function
-- [ ] T045 Create `internal/core/control/retention.go`, to pass T044; wire a daemon housekeeping tick in `cmd/foreman/main.go` that calls it against `$FOREMAN_HOME/work/runs/*` and `state/reports/*`
-- [ ] T046 [P] Implement the unanswered-approval secondary-channel ping: `internal/adapters/ntfy/ntfy.go` (one `net/http` POST), wired into the housekeeping tick from T045 for any `approvals` row `pending` past the configured threshold (default 4h, spec.md Assumptions) — never auto-resolves the approval itself
-- [ ] T047 [P] Implement `/logs <id> [node]` and `/budget` in `internal/adapters/telegram/commands.go`
+- [X] T044 [P] Write `internal/core/control/retention_test.go`: pure tests for the retention decision function — given a kind (transcript/container-output/successful-workspace/cancelled-workspace) and an age, returns whether it should be swept, per data-model.md's Retention section (90d / 7d-configurable-to-14 / immediate-on-success / 7d respectively); structured SQLite rows are never selected for deletion by this function
+- [X] T045 Create `internal/core/control/retention.go`, to pass T044; wire a daemon housekeeping tick in `cmd/foreman/main.go` that calls it against `$FOREMAN_HOME/work/runs/*` and `state/reports/*`
+- [X] T046 [P] Implement the unanswered-approval secondary-channel ping: `internal/adapters/ntfy/ntfy.go` (one `net/http` POST), wired into the housekeeping tick from T045 for any `approvals` row `pending` past the configured threshold (default 4h, spec.md Assumptions) — never auto-resolves the approval itself
+- [X] T047 [P] Implement `/logs <id> [node]` and `/budget` in `internal/adapters/telegram/commands.go`
 - [ ] T048 Run a secret-redaction check across `$FOREMAN_HOME/work/runs/` and `state/reports/` after a full quickstart pass (same `grep -E` token-pattern check as Feature 002's T035)
 - [ ] T049 Execute quickstart.md steps 1 through 7 against a real Telegram bot token and a real GitHub fine-grained PAT on a disposable test repo (operator action — needs the allowlist bootstrap and, for unattended testing, the dedicated `foreman` OS user per ADR 0001)
 - [ ] T050 Run `gofmt -l .`, `go vet ./...`, and `go test ./...` ensuring zero issues and 100% test pass, including `internal/archtest` covering the new `internal/core/control` package
