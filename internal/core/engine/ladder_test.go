@@ -41,6 +41,11 @@ func TestClassifyFailure(t *testing.T) {
 			errStr:  "rate limit exceeded (429) backoff",
 			wantCls: task.FailureProvider,
 		},
+		{
+			name:    "context cancelled by operator pause/cancel is infra failure, not attempt",
+			errStr:  "context canceled",
+			wantCls: task.FailureInfra,
+		},
 	}
 
 	for _, tc := range tests {

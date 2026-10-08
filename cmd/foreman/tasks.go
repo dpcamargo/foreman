@@ -24,11 +24,27 @@ type dispatcher interface {
 	Dispatch(ctx context.Context, params engine.RunParams)
 }
 
+// supervisorControl is the pause/resume/cancel subset of *engine.Supervisor
+// (spec FR-008/FR-009).
+type supervisorControl interface {
+	Cancel(taskID string)
+	PauseGraceful(taskID string)
+	ResumeGraceful(taskID string)
+}
+
 // resolveBaseCommit resolves repoURL's current commit so a Telegram-created task has a
 // concrete, pinned base_commit (FR-004 applies the same way to daemon-dispatched tasks as
 // to fm run's task.yaml). Overridable in tests.
 var resolveBaseCommit = func(ctx context.Context, repoURL string) (string, error) {
 	return gitResolveHEAD(ctx, repoURL)
+}
+
+// engineRunParamsFor builds a fresh RunParams for re-dispatching tsk (used by resumeTask).
+// Visible/Hidden test filesystems aren't persisted anywhere for daemon-dispatched tasks
+// (there's no task.yaml to re-read them from), so a resumed task re-verifies with none —
+// the same gap buildEngineConfig's FileExists already documents for this feature.
+func engineRunParamsFor(tsk task.Task) engine.RunParams {
+	return engine.RunParams{Task: tsk}
 }
 
 // createTask creates a pending task.Task for repoURL/requestText and hands it to sup for

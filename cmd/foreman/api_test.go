@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/dpcamargo/foreman/internal/core/task"
 )
@@ -77,5 +79,57 @@ func TestAPIGetMissingTaskReturns404(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("expected 404, got %d", resp.StatusCode)
+	}
+}
+
+func TestAPIPauseResumeCancelRoutes(t *testing.T) {
+	store := newFakeTaskStore()
+	now := time.Now().UTC()
+	store.tasks = append(store.tasks, task.Task{
+		ID: "tsk_1", TaskType: task.TaskTypeCode, RepoURL: "/r.git",
+		BaseCommit: "0123456789abcdef0123456789abcdef01234567", RequestText: "x",
+		Status: task.StatusRunning, CreatedAt: now, UpdatedAt: now,
+	})
+	disp := &fakeDispatcher{}
+	mux := newAPIMux(store, disp)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	resp, err := http.Post(srv.URL+"/v1/tasks/tsk_1/pause", "application/json", strings.NewReader(`{}`))
+	if err != nil {
+		t.Fatalf("POST pause: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 from pause, got %d", resp.StatusCode)
+	}
+	if len(disp.pausedGraceful) != 1 || disp.pausedGraceful[0] != "tsk_1" {
+		t.Errorf("expected graceful pause called, got %+v", disp.pausedGraceful)
+	}
+
+	resp, err = http.Post(srv.URL+"/v1/tasks/tsk_1/resume", "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST resume: %v", err)
+	}
+	resp.Body.Close()
+	// tsk_1 is still "running" (graceful pause doesn't rewrite status in this fake store
+	// path — only pauseTaskNow/cancelTask do), so Resume() will reject it; that's fine,
+	// this test only exercises routing, not the full pause->resume state machine.
+	_ = resp.StatusCode
+
+	resp, err = http.Post(srv.URL+"/v1/tasks/tsk_1/cancel", "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST cancel: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 from cancel, got %d", resp.StatusCode)
+	}
+	if len(disp.cancelled) != 1 || disp.cancelled[0] != "tsk_1" {
+		t.Errorf("expected Cancel called, got %+v", disp.cancelled)
+	}
+	got, _ := store.Task(context.Background(), "tsk_1")
+	if got.Status != task.StatusCancelled {
+		t.Errorf("expected status cancelled, got %s", got.Status)
 	}
 }

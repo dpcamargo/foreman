@@ -111,14 +111,14 @@ reconciler recovers all leases.
 
 ### Tests for User Story 3
 
-- [ ] T032 [P] [US3] Write `internal/adapters/telegram/commands_test.go` additions: `/pause [id|all] [now]`, `/resume [id]`, `/cancel <id>` parse correctly, including the `all` target
+- [X] T032 [P] [US3] Write `internal/adapters/telegram/commands_test.go` additions: `/pause [id|all] [now]`, `/resume [id]`, `/cancel <id>` parse correctly, including the `all` target
 - [ ] T033 [US3] Write a `cmd/foreman` integration test (`cmd/foreman/run_test.go`, mirroring `cmd/fm/run_test.go`'s `TestRunInterruptedResumption` pattern): start a task, SIGKILL the daemon process mid-attempt, restart it, confirm the dead run is marked `infra_error` (lost) via the reconciler and the task is retried cleanly from a fresh clone — no duplicate or inconsistent rows
 
 ### Implementation for User Story 3
 
-- [ ] T034 [US3] Extend `internal/adapters/telegram/commands.go`: `/pause [id|all] [now]`, `/resume [id]`, `/cancel <id>`, to pass T032
-- [ ] T035 [US3] Wire `/pause`/`/resume`/`/cancel` in `cmd/foreman`: `/pause <id>` calls `Supervisor.PauseGraceful`; `/pause <id> now` calls `Supervisor.Cancel` and marks the resulting run infra-cancelled-and-retriable (not an attempt failure, FR-008); `/cancel <id>` calls `Supervisor.Cancel`, marks the task `status=cancelled` via `Task.Cancel`, and retains its workspace (no immediate deletion — the 7-day sweep is Polish phase, FR-009)
-- [ ] T036 [US3] Implement `POST /v1/tasks/{id}/pause`, `POST /v1/tasks/{id}/resume`, `POST /v1/tasks/{id}/cancel` on `internal/adapters/localapi/server.go`, mirroring T035
+- [X] T034 [US3] Extend `internal/adapters/telegram/commands.go`: `/pause [id|all] [now]`, `/resume [id]`, `/cancel <id>`, to pass T032
+- [X] T035 [US3] Wire `/pause`/`/resume`/`/cancel` in `cmd/foreman`: `/pause <id>` calls `Supervisor.PauseGraceful`; `/pause <id> now` calls `Supervisor.Cancel` and marks the resulting run infra-cancelled-and-retriable (not an attempt failure, FR-008); `/cancel <id>` calls `Supervisor.Cancel`, marks the task `status=cancelled` via `Task.Cancel`, and retains its workspace (no immediate deletion — the 7-day sweep is Polish phase, FR-009)
+- [X] T036 [US3] Implement `POST /v1/tasks/{id}/pause`, `POST /v1/tasks/{id}/resume`, `POST /v1/tasks/{id}/cancel` on `cmd/foreman/api.go`'s mux (same file as the other `/v1/tasks` routes added in Phase 3/US2, not `internal/adapters/localapi/server.go` which is the generic unix-socket transport — mirrors T030's precedent), mirroring T035
 - [ ] T037 [US3] Confirm (no new code expected; add a regression test if a gap is found) that `cmd/foreman/main.go`'s startup sequencing from T019 already satisfies T033 end to end — the reconciler sweep must run and complete before `Supervisor.Dispatch` is reachable from any adapter
 
 **Checkpoint**: All three user stories independently functional — pause/resume/cancel work, and

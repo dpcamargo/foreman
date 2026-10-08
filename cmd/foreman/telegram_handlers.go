@@ -27,6 +27,7 @@ type fullStore interface {
 type dispatcherApprovals interface {
 	dispatcher
 	approvalWaiter
+	supervisorControl
 }
 
 // approvalResolver is the subset approvals.go's resolveApproval needs, used by both
@@ -93,6 +94,59 @@ func handleUpdate(ctx context.Context, store fullStore, sup dispatcherApprovals,
 			return
 		}
 		reply(ctx, sender, chatID, formatTaskList(nonTerminalTasks(tasks)))
+
+	case "pause":
+		if len(cmd.Args) == 0 {
+			reply(ctx, sender, chatID, "usage: /pause <id|all> [now]")
+			return
+		}
+		now := len(cmd.Args) > 1 && cmd.Args[1] == "now"
+		target := cmd.Args[0]
+		ids := []string{target}
+		if target == "all" {
+			all, err := store.RecentTasks(ctx, 0)
+			if err != nil {
+				reply(ctx, sender, chatID, "could not list tasks: "+err.Error())
+				return
+			}
+			ids = ids[:0]
+			for _, t := range nonTerminalTasks(all) {
+				ids = append(ids, t.ID)
+			}
+		}
+		for _, id := range ids {
+			if now {
+				if err := pauseTaskNow(ctx, store, sup, id); err != nil {
+					reply(ctx, sender, chatID, fmt.Sprintf("could not pause %s: %v", id, err))
+					continue
+				}
+			} else {
+				pauseTaskGraceful(sup, id)
+			}
+		}
+		reply(ctx, sender, chatID, fmt.Sprintf("paused %d task(s)", len(ids)))
+
+	case "resume":
+		if len(cmd.Args) == 0 {
+			reply(ctx, sender, chatID, "usage: /resume <id>")
+			return
+		}
+		if err := resumeTask(ctx, store, sup, cmd.Args[0]); err != nil {
+			reply(ctx, sender, chatID, "could not resume: "+err.Error())
+			return
+		}
+		reply(ctx, sender, chatID, "resumed "+cmd.Args[0])
+
+	case "cancel":
+		if len(cmd.Args) == 0 {
+			reply(ctx, sender, chatID, "usage: /cancel <id>")
+			return
+		}
+		if err := cancelTask(ctx, store, sup, cmd.Args[0]); err != nil {
+			reply(ctx, sender, chatID, "could not cancel: "+err.Error())
+			return
+		}
+		reply(ctx, sender, chatID, "cancelled "+cmd.Args[0])
 
 	case "reject":
 		if len(cmd.Args) == 0 {

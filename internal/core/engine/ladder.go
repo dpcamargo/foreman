@@ -18,7 +18,8 @@ func ClassifyFailure(report VerifyReport, errStr string) task.FailureClass {
 	if strings.Contains(lowerErr, "docker") ||
 		strings.Contains(lowerErr, "cannot connect") ||
 		strings.Contains(lowerErr, "lost pid") ||
-		strings.Contains(lowerErr, "disk full") {
+		strings.Contains(lowerErr, "disk full") ||
+		strings.Contains(lowerErr, "context canceled") {
 		return task.FailureInfra
 	}
 	if strings.Contains(lowerErr, "rate limit") ||

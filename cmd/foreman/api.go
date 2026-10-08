@@ -66,11 +66,47 @@ func newAPIMux(store fullStore, sup dispatcherApprovals) *http.ServeMux {
 	})
 
 	mux.HandleFunc("/v1/tasks/", func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/v1/tasks/")
+		if id, ok := strings.CutSuffix(path, "/pause"); ok && r.Method == http.MethodPost {
+			var body struct {
+				Now bool `json:"now"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body) // an empty body means now=false
+			var err error
+			if body.Now {
+				err = pauseTaskNow(r.Context(), store, sup, id)
+			} else {
+				pauseTaskGraceful(sup, id)
+			}
+			if err != nil {
+				writeJSONError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "pausing"})
+			return
+		}
+		if id, ok := strings.CutSuffix(path, "/resume"); ok && r.Method == http.MethodPost {
+			if err := resumeTask(r.Context(), store, sup, id); err != nil {
+				writeJSONError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "running"})
+			return
+		}
+		if id, ok := strings.CutSuffix(path, "/cancel"); ok && r.Method == http.MethodPost {
+			if err := cancelTask(r.Context(), store, sup, id); err != nil {
+				writeJSONError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "cancelled"})
+			return
+		}
+
 		if r.Method != http.MethodGet {
 			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
-		id := strings.TrimPrefix(r.URL.Path, "/v1/tasks/")
+		id := path
 		if id == "" {
 			writeJSONError(w, http.StatusNotFound, "task id required")
 			return

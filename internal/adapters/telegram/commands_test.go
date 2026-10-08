@@ -70,6 +70,42 @@ func TestParseCommand(t *testing.T) {
 			wantCmd: telegram.Command{Name: "answer", Args: []string{"tsk_123", "use the v2 API"}},
 		},
 		{
+			name:    "pause with id",
+			text:    "/pause tsk_123",
+			wantOK:  true,
+			wantCmd: telegram.Command{Name: "pause", Args: []string{"tsk_123"}},
+		},
+		{
+			name:    "pause with id and now",
+			text:    "/pause tsk_123 now",
+			wantOK:  true,
+			wantCmd: telegram.Command{Name: "pause", Args: []string{"tsk_123", "now"}},
+		},
+		{
+			name:    "pause all",
+			text:    "/pause all",
+			wantOK:  true,
+			wantCmd: telegram.Command{Name: "pause", Args: []string{"all"}},
+		},
+		{
+			name:    "pause all now",
+			text:    "/pause all now",
+			wantOK:  true,
+			wantCmd: telegram.Command{Name: "pause", Args: []string{"all", "now"}},
+		},
+		{
+			name:    "resume with id",
+			text:    "/resume tsk_123",
+			wantOK:  true,
+			wantCmd: telegram.Command{Name: "resume", Args: []string{"tsk_123"}},
+		},
+		{
+			name:    "cancel with id",
+			text:    "/cancel tsk_123",
+			wantOK:  true,
+			wantCmd: telegram.Command{Name: "cancel", Args: []string{"tsk_123"}},
+		},
+		{
 			name:   "not a command",
 			text:   "hello there",
 			wantOK: false,

@@ -154,6 +154,14 @@ func (e *Engine) RunTask(ctx context.Context, params RunParams) (TaskReport, err
 	var verified bool
 
 	for attemptNum <= 10 {
+		// A cancelled context (Supervisor.Cancel, "/cancel" or "/pause ... now") means the
+		// caller is already recording its own authoritative final status (e.g. Cancel ->
+		// StatusCancelled) — returning here without any further Store write avoids a race
+		// where this goroutine's eventual blocked_human write clobbers that decision a few
+		// failed-retry iterations later.
+		if ctx.Err() != nil {
+			return TaskReport{}, ctx.Err()
+		}
 		if e.cfg.PauseCheck != nil && e.cfg.PauseCheck(tsk.ID) {
 			_ = tsk.Pause(time.Now().UTC())
 			_ = e.cfg.Store.UpdateTaskStatus(ctx, tsk.ID, tsk.Status, implNode.ID)

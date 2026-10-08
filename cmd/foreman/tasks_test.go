@@ -38,7 +38,14 @@ func (s *fakeTaskStore) Task(ctx context.Context, id string) (task.Task, error) 
 	return task.Task{}, task.ErrNotFound
 }
 func (s *fakeTaskStore) UpdateTaskStatus(ctx context.Context, id string, status task.TaskStatus, currentNodeID string) error {
-	return nil
+	for i := range s.tasks {
+		if s.tasks[i].ID == id {
+			s.tasks[i].Status = status
+			s.tasks[i].CurrentNodeID = currentNodeID
+			return nil
+		}
+	}
+	return task.ErrNotFound
 }
 func (s *fakeTaskStore) Node(ctx context.Context, id string) (task.Node, error) {
 	return task.Node{}, nil
@@ -103,13 +110,21 @@ func (s *fakeTaskStore) PendingApprovalForTask(ctx context.Context, taskID strin
 }
 
 type fakeDispatcher struct {
-	dispatched []engine.RunParams
-	waits      map[string]chan bool
+	dispatched     []engine.RunParams
+	waits          map[string]chan bool
+	cancelled      []string
+	pausedGraceful []string
+	resumed        []string
 }
 
 func (d *fakeDispatcher) Dispatch(ctx context.Context, params engine.RunParams) {
 	d.dispatched = append(d.dispatched, params)
 }
+func (d *fakeDispatcher) Cancel(taskID string) { d.cancelled = append(d.cancelled, taskID) }
+func (d *fakeDispatcher) PauseGraceful(taskID string) {
+	d.pausedGraceful = append(d.pausedGraceful, taskID)
+}
+func (d *fakeDispatcher) ResumeGraceful(taskID string) { d.resumed = append(d.resumed, taskID) }
 func (d *fakeDispatcher) WaitForApproval(ctx context.Context, approvalID string) (bool, error) {
 	if d.waits == nil {
 		d.waits = make(map[string]chan bool)

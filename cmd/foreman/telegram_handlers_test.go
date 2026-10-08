@@ -4,9 +4,11 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dpcamargo/foreman/internal/adapters/telegram"
 	"github.com/dpcamargo/foreman/internal/core/control"
+	"github.com/dpcamargo/foreman/internal/core/task"
 )
 
 type fakeSender struct {
@@ -183,5 +185,75 @@ func TestHandleCallbackQueryWrongNonceRejected(t *testing.T) {
 	}
 	if len(sender.sent) != 1 || !strings.Contains(sender.sent[0].Text, "could not apply") {
 		t.Fatalf("expected an error reply, got %+v", sender.sent)
+	}
+}
+
+func TestHandleUpdatePauseGraceful(t *testing.T) {
+	store := newFakeTaskStore()
+	sender := &fakeSender{}
+	disp := &fakeDispatcher{}
+
+	u := telegram.Update{Message: &telegram.Message{
+		Chat: telegram.Chat{ID: 42, Type: "private"},
+		Text: "/pause tsk_1",
+	}}
+	handleUpdate(context.Background(), store, disp, sender, u)
+
+	if len(disp.pausedGraceful) != 1 || disp.pausedGraceful[0] != "tsk_1" {
+		t.Errorf("expected graceful pause called, got %+v", disp.pausedGraceful)
+	}
+	if len(sender.sent) != 1 || !strings.Contains(sender.sent[0].Text, "paused 1 task") {
+		t.Fatalf("expected a pause confirmation, got %+v", sender.sent)
+	}
+}
+
+func TestHandleUpdatePauseAll(t *testing.T) {
+	store := newFakeTaskStore()
+	now := time.Now().UTC()
+	store.tasks = append(store.tasks,
+		task.Task{ID: "tsk_1", Status: task.StatusRunning, CreatedAt: now},
+		task.Task{ID: "tsk_2", Status: task.StatusPending, CreatedAt: now},
+		task.Task{ID: "tsk_3", Status: task.StatusSucceeded, CreatedAt: now}, // terminal, excluded
+	)
+	sender := &fakeSender{}
+	disp := &fakeDispatcher{}
+
+	u := telegram.Update{Message: &telegram.Message{
+		Chat: telegram.Chat{ID: 42, Type: "private"},
+		Text: "/pause all",
+	}}
+	handleUpdate(context.Background(), store, disp, sender, u)
+
+	if len(disp.pausedGraceful) != 2 {
+		t.Errorf("expected 2 non-terminal tasks paused, got %+v", disp.pausedGraceful)
+	}
+}
+
+func TestHandleUpdateCancel(t *testing.T) {
+	store := newFakeTaskStore()
+	now := time.Now().UTC()
+	store.tasks = append(store.tasks, task.Task{
+		ID: "tsk_1", TaskType: task.TaskTypeCode, RepoURL: "/r.git",
+		BaseCommit: "0123456789abcdef0123456789abcdef01234567", RequestText: "x",
+		Status: task.StatusRunning, CreatedAt: now, UpdatedAt: now,
+	})
+	sender := &fakeSender{}
+	disp := &fakeDispatcher{}
+
+	u := telegram.Update{Message: &telegram.Message{
+		Chat: telegram.Chat{ID: 42, Type: "private"},
+		Text: "/cancel tsk_1",
+	}}
+	handleUpdate(context.Background(), store, disp, sender, u)
+
+	if len(disp.cancelled) != 1 || disp.cancelled[0] != "tsk_1" {
+		t.Errorf("expected Cancel called, got %+v", disp.cancelled)
+	}
+	got, _ := store.Task(context.Background(), "tsk_1")
+	if got.Status != task.StatusCancelled {
+		t.Errorf("expected status cancelled, got %s", got.Status)
+	}
+	if len(sender.sent) != 1 || !strings.Contains(sender.sent[0].Text, "cancelled") {
+		t.Fatalf("expected a cancellation confirmation, got %+v", sender.sent)
 	}
 }
