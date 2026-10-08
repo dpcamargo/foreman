@@ -28,6 +28,21 @@ Hermes checks (T054, T056), the `a0` part of quickstart step 6 (T068) and the fi
 pass (T071). All four need the `foreman-arm` Hermes profile and Claude subscription tokens, so
 the operator runs them.
 
+002 is implemented: `fm run <task.yaml> [--arm codex|hermes]` executes spec -> implement ->
+verify -> review with ladder rungs 1-3, diff-policy enforcement, offline container
+verification, cross-family review, task reports, and a Feature 001 record per run. The H1
+eval arm replays those records (`fm eval replay --arm h1`). All 39 tasks done and verified:
+quickstart steps 1-7 ran against real Docker (Colima), Codex 0.161.0 and the `foreman-arm`
+Hermes profile, including crash recovery (SIGKILL -> `fm run --resume` marks the run
+`infra_error (lost)`), hidden-test escalation to `blocked_human`, and BLOCKING review
+findings correctly downgrading an otherwise-approved task to `changes_requested`. Two bugs
+were found and fixed during live testing: cited-file validation checked the CLI's cwd
+instead of the base commit's git tree, and `GateReviewFindings` auto-approved reviews whose
+findings used `blocking` severity. Per-attempt wall clock on a warm cache measured 30-37s
+against the 60s goal. The exit criterion ("beats the best single-agent arm on a decision
+replay of >=15 recorded real tasks") is not yet measured: that needs 15+ replayable records,
+accumulated as development tasks run through `fm run`.
+
 ## Why this order, not a different one
 
 - **001 before 002**: 002 writes a task record for every run and is judged by replaying those

@@ -44,15 +44,15 @@ All tasks follow test-first development (AGENTS.md): write tests first, ensure t
 
 ### Tests for User Story 2
 
-- [ ] T010 [P] [US2] Write unit tests in `internal/core/verify/policy_test.go` testing diff policy rules: test file deletion detection, protected paths matching, secret scanning with core redactor, and symlink escape rejection
-- [ ] T011 [P] [US2] Write unit tests in `internal/core/verify/config_test.go` testing `.foreman/project.yaml` parsing and validation
-- [ ] T012 [US2] Write container tests in `internal/adapters/container/verifier_test.go` (-tags container) verifying offline execution (`--network=none`), visible test execution, and hidden test mounting
+- [X] T010 [P] [US2] Write unit tests in `internal/core/verify/policy_test.go` testing diff policy rules: test file deletion detection, protected paths matching, secret scanning with core redactor, and symlink escape rejection
+- [X] T011 [P] [US2] Write unit tests in `internal/core/verify/config_test.go` testing `.foreman/project.yaml` parsing and validation
+- [X] T012 [US2] Write container tests in `internal/adapters/container/verifier_test.go` (-tags container) verifying offline execution (`--network=none`), visible test execution, and hidden test mounting
 
 ### Implementation for User Story 2
 
-- [ ] T013 [P] [US2] Implement `.foreman/project.yaml` parser in `internal/core/verify/config.go` to pass T011
-- [ ] T014 [US2] Implement diff policy engine in `internal/core/verify/policy.go` to pass T010
-- [ ] T015 [US2] Implement container verifier adapter in `internal/core/verify/verifier.go` wrapping the Feature 001 grader with diff policy checks to pass T012
+- [X] T013 [P] [US2] Implement `.foreman/project.yaml` parser in `internal/core/verify/config.go` to pass T011
+- [X] T014 [US2] Implement diff policy engine in `internal/core/verify/policy.go` to pass T010
+- [X] T015 [US2] Implement container verifier adapter in `internal/core/verify/verifier.go` wrapping the Feature 001 grader with diff policy checks to pass T012
 
 **Checkpoint**: User Story 2 complete. Verifier reliably rejects test deletion, protected edits, secrets, and failing tests.
 
@@ -66,22 +66,22 @@ All tasks follow test-first development (AGENTS.md): write tests first, ensure t
 
 ### Tests for User Story 1
 
-- [ ] T016 [P] [US1] Write unit tests in `internal/core/engine/spec_test.go` testing `TaskSpec` grounding check on base commit (cited files and verify commands validation)
-- [ ] T017 [P] [US1] Write unit tests in `internal/core/engine/ladder_test.go` testing escalation rungs 1-3, failure classification (`infra`, `provider`, `attempt`, `policy`), and loop guards (signature repeat, diff oscillation, pass count flatline)
-- [ ] T018 [P] [US1] Write unit tests in `internal/core/engine/review_test.go` testing cross-family model pairing and downgrading of major findings lacking repro/evidence
-- [ ] T019 [US1] Write unit tests in `internal/core/engine/engine_test.go` testing the full linear run loop (`spec` -> `implement` -> `verify` -> `review`) with fakes for all ports
+- [X] T016 [P] [US1] Write unit tests in `internal/core/engine/spec_test.go` testing `TaskSpec` grounding check on base commit (cited files and verify commands validation)
+- [X] T017 [P] [US1] Write unit tests in `internal/core/engine/ladder_test.go` testing escalation rungs 1-3, failure classification (`infra`, `provider`, `attempt`, `policy`), and loop guards (signature repeat, diff oscillation, pass count flatline)
+- [X] T018 [P] [US1] Write unit tests in `internal/core/engine/review_test.go` testing cross-family model pairing and downgrading of major findings lacking repro/evidence
+- [X] T019 [US1] Write unit tests in `internal/core/engine/engine_test.go` testing the full linear run loop (`spec` -> `implement` -> `verify` -> `review`) with fakes for all ports
 
 ### Implementation for User Story 1
 
-- [ ] T020 [P] [US1] Define ports (`Specifier`, `Implementer`, `Verifier`, `Reviewer`) and types in `internal/core/engine/ports.go`
-- [ ] T021 [US1] Implement spec grounding validation in `internal/core/engine/spec.go` to pass T016
-- [ ] T022 [US1] Implement escalation ladder and loop guards in `internal/core/engine/ladder.go` to pass T017
-- [ ] T023 [US1] Implement cross-family review coordinator in `internal/core/engine/review.go` to pass T018
-- [ ] T024 [US1] Implement main execution engine loop in `internal/core/engine/engine.go` to pass T019
-- [ ] T025 [P] [US1] Implement task reporting in `internal/core/engine/report.go` writing markdown and JSON reports
-- [ ] T026 [US1] Extend `internal/adapters/runner/codex/codex.go` to implement `Specifier`, `Implementer`, and `Reviewer` ports
-- [ ] T027 [US1] Extend `internal/adapters/runner/hermes/oneshot.go` to implement `Reviewer` and `Implementer` ports for Claude route
-- [ ] T028 [US1] Implement `internal/adapters/runner/harness/h1.go` satisfying Feature 001's `eval.Arm` interface (arm `H1`)
+- [X] T020 [P] [US1] Define ports (`Specifier`, `Implementer`, `Verifier`, `Reviewer`) and types in `internal/core/engine/ports.go`
+- [X] T021 [US1] Implement spec grounding validation in `internal/core/engine/spec.go` to pass T016
+- [X] T022 [US1] Implement escalation ladder and loop guards in `internal/core/engine/ladder.go` to pass T017
+- [X] T023 [US1] Implement cross-family review coordinator in `internal/core/engine/review.go` to pass T018
+- [X] T024 [US1] Implement main execution engine loop in `internal/core/engine/engine.go` to pass T019
+- [X] T025 [P] [US1] Implement task reporting in `internal/core/engine/report.go` writing markdown and JSON reports
+- [X] T026 [US1] Extend `internal/adapters/runner/codex/codex.go` to implement `Specifier`, `Implementer`, and `Reviewer` ports
+- [X] T027 [US1] Extend `internal/adapters/runner/hermes/oneshot.go` to implement `Reviewer` and `Implementer` ports for Claude route
+- [X] T028 [US1] Implement `internal/adapters/runner/harness/h1.go` satisfying Feature 001's `eval.Arm` interface (arm `H1`)
 
 **Checkpoint**: User Story 1 functional with complete execution loop and cross-family review.
 
@@ -95,15 +95,15 @@ All tasks follow test-first development (AGENTS.md): write tests first, ensure t
 
 ### Tests for User Story 3
 
-- [ ] T029 [P] [US3] Write unit tests in `internal/core/engine/reconcile_test.go` verifying startup sweep marks dead PIDs as lost and leaves active PIDs untouched
-- [ ] T030 [US3] Write integration tests in `cmd/fm/run_test.go` covering CLI flag parsing, task file ingestion, and interrupted run resumption
+- [X] T029 [P] [US3] Write unit tests in `internal/core/engine/reconcile_test.go` verifying startup sweep marks dead PIDs as lost and leaves active PIDs untouched
+- [X] T030 [US3] Write integration tests in `cmd/fm/run_test.go` covering CLI flag parsing, task file ingestion, and interrupted run resumption
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Implement startup reconciler sweep in `internal/core/engine/reconcile.go` using `internal/adapters/proc` to pass T029
-- [ ] T032 [US3] Implement `fm run` command in `cmd/fm/run.go` wiring sqlite, sandbox, container verifier, codex, hermes, and engine
-- [ ] T033 [US3] Wire Feature 001 task record emission (`RecordStore.AddRecord`) in `cmd/fm/run.go` upon task completion (FR-021)
-- [ ] T034 [US3] Add `run` subcommand dispatch to `cmd/fm/main.go`
+- [X] T031 [US3] Implement startup reconciler sweep in `internal/core/engine/reconcile.go` using `internal/adapters/proc` to pass T029
+- [X] T032 [US3] Implement `fm run` command in `cmd/fm/run.go` wiring sqlite, sandbox, container verifier, codex, hermes, and engine
+- [X] T033 [US3] Wire Feature 001 task record emission (`RecordStore.AddRecord`) in `cmd/fm/run.go` upon task completion (FR-021)
+- [X] T034 [US3] Add `run` subcommand dispatch to `cmd/fm/main.go`
 
 **Checkpoint**: User Stories 1, 2, and 3 complete. `fm run` is fully resilient and resumable.
 
@@ -113,11 +113,11 @@ All tasks follow test-first development (AGENTS.md): write tests first, ensure t
 
 **Purpose**: End-to-end verification, quality gates, and cleanup
 
-- [ ] T035 [P] Run secret redaction check across run directories and report outputs (`grep -E` for token patterns)
-- [ ] T036 Execute quickstart steps 1 through 7 in `specs/002-durable-execution-loop/quickstart.md` against real Docker and Codex
-- [ ] T037 Run `gofmt -l .`, `go vet ./...`, and `go test ./...` ensuring zero issues and 100% test pass
-- [ ] T038 Measure per-attempt overhead on warm cache against the 60s performance goal
-- [ ] T039 Update `specs/ROADMAP.md` recording Feature 002 implementation progress and test results
+- [X] T035 [P] Run secret redaction check across run directories and report outputs (`grep -E` for token patterns)
+- [X] T036 Execute quickstart steps 1 through 7 in `specs/002-durable-execution-loop/quickstart.md` against real Docker and Codex
+- [X] T037 Run `gofmt -l .`, `go vet ./...`, and `go test ./...` ensuring zero issues and 100% test pass
+- [X] T038 Measure per-attempt overhead on warm cache against the 60s performance goal
+- [X] T039 Update `specs/ROADMAP.md` recording Feature 002 implementation progress and test results
 
 ---
 

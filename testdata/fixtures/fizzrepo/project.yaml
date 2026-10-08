@@ -1,0 +1,9 @@
+version: 1
+verifier_image: foreman-grader:latest
+setup:
+  - ["go", "version"]
+verify:
+  - ["go", "test", "-json", "./..."]
+protected_paths:
+  - ".foreman/**"
+  - "go.mod"
