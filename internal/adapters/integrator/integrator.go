@@ -37,7 +37,7 @@ type Integrator struct {
 
 // New returns an Integrator for owner/repo, using work for bare mirrors.
 func New(work, owner, repo, token string) *Integrator {
-	return &Integrator{
+	ig := &Integrator{
 		Work:      work,
 		Owner:     owner,
 		Repo:      repo,
@@ -47,6 +47,8 @@ func New(work, owner, repo, token string) *Integrator {
 		sandbox:   sandbox.New(work),
 		retryBase: time.Second,
 	}
+	ig.sandbox.RemoteAuth = token
+	return ig
 }
 
 // DiffSHA256 is the canonical hash of a verified patch — what a merge Approval's

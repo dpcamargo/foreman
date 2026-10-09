@@ -4,8 +4,11 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -70,8 +73,41 @@ func gitCatFile(ctx context.Context, repoURL, commit, path string) ([]byte, erro
 		return out, nil
 	}
 
-	// Remote URL: no local clone yet (Sandbox.Prepare clones later). `git archive --remote`
-	// streams a single file's contents without needing a full fetch.
+	// Remote URL: try `gh api` for GitHub URLs (git archive --remote is disabled by
+	// GitHub server-side). Falls back to git archive --remote for other git servers.
+	if strings.Contains(repoURL, "github.com") {
+		// Extract owner/repo from the URL.
+		trimmed := strings.TrimSuffix(strings.TrimPrefix(repoURL, "https://"), ".git")
+		trimmed = strings.TrimPrefix(trimmed, "git@github.com:")
+		parts := strings.Split(trimmed, "/")
+		if len(parts) >= 2 {
+			owner, repo := parts[len(parts)-2], parts[len(parts)-1]
+			apiURL := "https://api.github.com/repos/" + owner + "/" + repo + "/contents/" + path + "?ref=" + commit
+			req, reqErr := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+			if reqErr == nil {
+				req.Header.Set("Accept", "application/vnd.github+json")
+				if tok := os.Getenv("FOREMAN_GITHUB_TOKEN"); tok != "" {
+					req.Header.Set("Authorization", "Bearer "+tok)
+				}
+				resp, doErr := http.DefaultClient.Do(req)
+				if doErr == nil {
+					defer resp.Body.Close()
+					if resp.StatusCode == 200 {
+						var out struct {
+							Content string `json:"content"`
+						}
+						if jsonErr := json.NewDecoder(resp.Body).Decode(&out); jsonErr == nil && out.Content != "" {
+							decoded, decErr := base64.StdEncoding.DecodeString(strings.ReplaceAll(out.Content, "\n", ""))
+							if decErr == nil {
+								return decoded, nil
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 	out, err := exec.CommandContext(ctx, "git", "archive", "--remote="+repoURL, commit, path).Output()
 	if err != nil {
 		return nil, fmt.Errorf("git archive --remote %s %s: %w", repoURL, path, err)

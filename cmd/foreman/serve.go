@@ -204,6 +204,7 @@ func buildEngineConfig(ctx context.Context, e env, store *sqlite.Store) (engine.
 	})
 	redactor := eval.NewRedactor(environMap())
 	ws := sandbox.New(e.Work)
+	ws.RemoteAuth = e.GitHubToken
 	grader := container.New(container.Config{
 		Image: e.GraderImage, DockerContext: e.DockerContext, Work: e.Work,
 		Clones: ws, Redact: redactor.Redact,

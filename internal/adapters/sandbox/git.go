@@ -26,6 +26,9 @@ import (
 // Manager makes and removes workspaces under a work root.
 type Manager struct {
 	work string // $FOREMAN_HOME/work
+	// RemoteAuth is an optional bearer token for cloning private remote repos (e.g. GitHub).
+	// When set, clone/fetch calls pass it as an Authorization header via git -c http.extraHeader.
+	RemoteAuth string
 }
 
 // New returns a Manager rooted at work.
@@ -101,15 +104,16 @@ func (m *Manager) populate(ctx context.Context, mirror string, ws eval.Workspace
 // in it.
 func (m *Manager) ensureMirror(ctx context.Context, repoURL, base string) (string, error) {
 	mirror := m.mirrorPath(repoURL)
+	authArgs := m.authArgs(repoURL)
 	if _, err := os.Stat(mirror); errors.Is(err, fs.ErrNotExist) {
 		if err := os.MkdirAll(filepath.Dir(mirror), 0o755); err != nil {
 			return "", fmt.Errorf("create mirrors dir: %w", err)
 		}
-		if _, err := Git(ctx, "", "clone", "-q", "--mirror", repoURL, mirror); err != nil {
+		if _, err := Git(ctx, "", append(authArgs, "clone", "-q", "--mirror", repoURL, mirror)...); err != nil {
 			os.RemoveAll(mirror)
 			return "", fmt.Errorf("mirror %s: %w", repoURL, err)
 		}
-	} else if _, err := Git(ctx, "", "--git-dir="+mirror, "fetch", "-q", "--prune"); err != nil {
+	} else if _, err := Git(ctx, "", append(authArgs, "--git-dir="+mirror, "fetch", "-q", "--prune")...); err != nil {
 		return "", fmt.Errorf("fetch %s: %w", repoURL, err)
 	}
 	if _, err := Git(ctx, "", "--git-dir="+mirror, "cat-file", "-e", base+"^{commit}"); err != nil {
@@ -172,6 +176,23 @@ func (m *Manager) DestroyWorkspace(_ context.Context, dir string) error {
 }
 
 var _ engine.WorkspaceCloner = (*Manager)(nil)
+
+// authArgs returns git -c flags to authenticate private remote clones/fetches.
+// Uses credential.helper (not http.extraHeader — git's credential flow still prompts
+// for a username even with an Authorization header set). Returns nil for local paths
+// or when RemoteAuth is unset.
+func (m *Manager) authArgs(repoURL string) []string {
+	if m.RemoteAuth == "" || !looksRemote(repoURL) {
+		return nil
+	}
+	helper := "!f() { echo username=x-access-token; echo password=" + m.RemoteAuth + "; }; f"
+	return []string{"-c", "credential.helper=" + helper}
+}
+
+// looksRemote reports whether repoURL is a network URL (not a local filesystem path).
+func looksRemote(repoURL string) bool {
+	return strings.Contains(repoURL, "://") || strings.HasPrefix(repoURL, "git@")
+}
 
 // Git runs git with hooks disabled, no system or global config, no prompts, and no
 // inherited GIT_* variables. Exported so other adapters (e.g. internal/adapters/integrator)
