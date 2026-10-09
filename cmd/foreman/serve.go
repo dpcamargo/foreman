@@ -189,10 +189,12 @@ func buildEngineConfig(ctx context.Context, e env, store *sqlite.Store) (engine.
 	}
 
 	codexArm := codex.New(codex.Config{
-		GoRoot:   strings.TrimSpace(string(goroot)),
-		ModCache: filepath.Join(e.Work, "gomodcache"),
-		Home:     home,
-		Path:     os.Getenv("PATH"),
+		GoRoot:    strings.TrimSpace(string(goroot)),
+		ModCache:  filepath.Join(e.Work, "gomodcache"),
+		Home:      home,
+		Path:      os.Getenv("PATH"),
+		CodexHome: os.Getenv("CODEX_HOME"),
+		ToolRoots: toolRoots("codex"),
 	})
 	hermesArm := hermes.NewOneshot(hermes.Config{
 		HermesHome: e.HermesHome,
