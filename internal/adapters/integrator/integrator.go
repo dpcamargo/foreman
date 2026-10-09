@@ -56,6 +56,15 @@ func DiffSHA256(patch []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// PushBranch pushes the verified patch as agent/<taskID> to the GitHub repo this Integrator
+// is configured for. It constructs the authenticated push URL from the configured token and
+// delegates to PushWithBackoff. This is the missing step before OpenDraftPR — without it
+// GitHub's POST /pulls fails because the head branch was never pushed.
+func (ig *Integrator) PushBranch(ctx context.Context, taskID string, patch []byte, repoURL, baseCommit string) error {
+	pushURL := "https://x-access-token:" + ig.Token + "@github.com/" + ig.Owner + "/" + ig.Repo + ".git"
+	return ig.PushWithBackoff(ctx, taskID, patch, repoURL, baseCommit, pushURL)
+}
+
 // ApplyAndPush applies patch (a verified export diff) to a fresh agent/<taskID> branch off
 // baseCommit in the bare mirror of repoURL, and pushes it to pushURL. Any failure — push
 // included — leaves patch exactly as passed in (T038: never discard or regenerate the

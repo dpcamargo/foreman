@@ -99,7 +99,9 @@ func serve(ctx context.Context, e env, stdout, stderr io.Writer) int {
 		if ig == nil {
 			return
 		}
-		_ = requestDeliveryApproval(ctx, store, sup, sender, ig, report)
+		if err := requestDeliveryApproval(ctx, store, sup, sender, ig, report); err != nil {
+			fmt.Fprintf(stderr, "foreman: delivery for %s: %v\n", report.TaskID, err)
+		}
 	}
 	mergePusher = ig
 

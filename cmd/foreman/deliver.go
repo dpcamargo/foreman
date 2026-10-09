@@ -26,6 +26,7 @@ type deliverApprovalStore interface {
 
 // pusher is the integrator subset deliver.go needs.
 type pusher interface {
+	PushBranch(ctx context.Context, taskID string, patch []byte, repoURL, baseCommit string) error
 	OpenDraftPR(ctx context.Context, taskID string, patch []byte) (string, error)
 	MergePullRequest(ctx context.Context, taskID string, pullNumber int) error
 }
@@ -81,6 +82,16 @@ func requestDeliveryApproval(ctx context.Context, store deliverApprovalStore, su
 		return nil
 	}
 
+	// Push the branch to GitHub before opening a PR — without this POST /pulls fails
+	// because head agent/<taskID> was never pushed (found during 003 live quickstart T049).
+	if err := ig.PushBranch(ctx, report.TaskID, report.Patch, report.RepoURL, report.BaseCommit); err != nil {
+		_ = store.UpdateDeliveryStatus(ctx, report.TaskID, "failed", "")
+		return fmt.Errorf("push branch for %s: %w", report.TaskID, err)
+	}
+	if err := store.UpdateDeliveryStatus(ctx, report.TaskID, "pushed", ""); err != nil {
+		return fmt.Errorf("update delivery status to pushed: %w", err)
+	}
+
 	prURL, err := ig.OpenDraftPR(ctx, report.TaskID, report.Patch)
 	if err != nil {
 		_ = store.UpdateDeliveryStatus(ctx, report.TaskID, "failed", "")
@@ -90,9 +101,14 @@ func requestDeliveryApproval(ctx context.Context, store deliverApprovalStore, su
 		return fmt.Errorf("update delivery status: %w", err)
 	}
 	if sender != nil {
-		_, _ = sender.SendMessage(ctx, telegram.SendMessageRequest{
-			Text: "draft PR opened for " + report.TaskID + ": " + prURL,
-		})
+		if ids, err := store.AllowedUserIDs(ctx); err == nil {
+			for _, chatID := range ids {
+				_, _ = sender.SendMessage(ctx, telegram.SendMessageRequest{
+					ChatID: chatID,
+					Text:   "draft PR opened for " + report.TaskID + ": " + prURL,
+				})
+			}
+		}
 	}
 
 	// Merge gate (T039/SC-002): bound to the delivered diff's hash, not the task id.
@@ -114,10 +130,15 @@ func requestDeliveryApproval(ctx context.Context, store deliverApprovalStore, su
 	}
 	if sender != nil {
 		kb := telegram.NewMergeKeyboard(mergeApproval.ID, mergeApproval.Nonce)
-		_, _ = sender.SendMessage(ctx, telegram.SendMessageRequest{
-			Text:        mergeApproval.Question,
-			ReplyMarkup: kb,
-		})
+		if ids, err := store.AllowedUserIDs(ctx); err == nil {
+			for _, chatID := range ids {
+				_, _ = sender.SendMessage(ctx, telegram.SendMessageRequest{
+					ChatID:      chatID,
+					Text:        mergeApproval.Question,
+					ReplyMarkup: kb,
+				})
+			}
+		}
 	}
 	return nil
 }

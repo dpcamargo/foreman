@@ -12,11 +12,18 @@ import (
 )
 
 type fakePusher struct {
+	pushed     []string // task ids pushed via PushBranch
 	openedPR   []string // task ids
 	merged     []int    // pull numbers
 	prURL      string
+	pushErr    error
 	openPRErr  error
 	mergePRErr error
+}
+
+func (f *fakePusher) PushBranch(ctx context.Context, taskID string, patch []byte, repoURL, baseCommit string) error {
+	f.pushed = append(f.pushed, taskID)
+	return f.pushErr
 }
 
 func (f *fakePusher) OpenDraftPR(ctx context.Context, taskID string, patch []byte) (string, error) {
