@@ -1,7 +1,7 @@
 version: 1
 task_type: code
 repo: ~/.foreman/work/fixtures/ambiguous.git
-base_commit: ebf817b898fd79b9a9051289801b9fd601319078
+base_commit: 209585dff58324aadcefcb7f8f64e1a15fb2b3d2
 request: "Make `Add` return the product of its arguments, but keep all existing tests passing."
 hidden_tests: testdata/fixtures/ambiguous/hidden
 test_cmd: ["go", "test", "-json", "./..."]

@@ -117,7 +117,7 @@ func serve(ctx context.Context, e env, stdout, stderr io.Writer) int {
 	go startHousekeepingTicker(ctx, e, store, ntfyForEnv(e), stdout, time.Hour)
 
 	if telegramClient != nil {
-		go pollTelegram(ctx, telegramClient, store, sup)
+		go pollTelegram(ctx, telegramClient, store, sup, stderr)
 	} else {
 		fmt.Fprintln(stdout, "foreman: TELEGRAM_BOT_TOKEN not set; local API only")
 	}
@@ -139,11 +139,18 @@ func serve(ctx context.Context, e env, stdout, stderr io.Writer) int {
 // pollTelegram runs the long-poll loop until ctx is cancelled, checking the allowlist and
 // chat type before any command executes (FR-003) and dropping anything that fails that
 // check with no reply at all.
-func pollTelegram(ctx context.Context, client *telegram.Client, store *sqlite.Store, sup *engine.Supervisor) {
+func pollTelegram(ctx context.Context, client *telegram.Client, store *sqlite.Store, sup *engine.Supervisor, stderr io.Writer) {
 	disp := telegram.Dispatcher{Allowlist: allowlistAdapter{store}}
 	_ = client.Poll(ctx, 0, func(u telegram.Update) {
 		allowed, err := disp.Allowed(ctx, u)
 		if err != nil || !allowed {
+			// Bootstrap aid only: the sender's numeric id goes to the daemon's own log,
+			// never back over Telegram (FR-003: a rejected sender gets no response at all,
+			// so nothing leaks in the reply). This is how the operator discovers their own
+			// id to seed the allowlist without a separate @userinfobot lookup.
+			if u.Message != nil && u.Message.From != nil {
+				fmt.Fprintf(stderr, "foreman: dropped message from telegram user id %d (not allowlisted)\n", u.Message.From.ID)
+			}
 			return
 		}
 		handleUpdate(ctx, store, sup, client, u)

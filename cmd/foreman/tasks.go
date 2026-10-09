@@ -8,6 +8,7 @@ import (
 
 	"github.com/dpcamargo/foreman/internal/core/engine"
 	"github.com/dpcamargo/foreman/internal/core/task"
+	"github.com/dpcamargo/foreman/internal/core/verify"
 )
 
 // taskStore is the persistence subset tasks.go needs — the parts of *sqlite.Store this
@@ -40,12 +41,35 @@ var resolveBaseCommit = func(ctx context.Context, repoURL string) (string, error
 	return gitResolveHEAD(ctx, repoURL)
 }
 
+// resolveProjectConfig resolves the base commit's .foreman/project.yaml for a
+// daemon-dispatched task (FR-016). Unlike cmd/fm/run.go, there is no task.yaml's directory
+// to search beside — the daemon only knows the repo URL and base commit — so the repo is
+// the single source of truth. A missing or invalid config refuses the task outright
+// (FR-016: "MUST refuse to run against a repo whose file is missing or invalid"), never
+// silently guessing a default verifier/verify command.
+var resolveProjectConfig = func(ctx context.Context, repoURL, baseCommit string) ([]byte, error) {
+	data, err := gitCatFile(ctx, repoURL, baseCommit, ".foreman/project.yaml")
+	if err != nil {
+		return nil, fmt.Errorf("read .foreman/project.yaml at %s: %w", baseCommit, err)
+	}
+	if _, err := verify.ParseProjectConfig(data); err != nil {
+		return nil, fmt.Errorf("%s: %w", repoURL, err)
+	}
+	return data, nil
+}
+
 // engineRunParamsFor builds a fresh RunParams for re-dispatching tsk (used by resumeTask).
 // Visible/Hidden test filesystems aren't persisted anywhere for daemon-dispatched tasks
 // (there's no task.yaml to re-read them from), so a resumed task re-verifies with none —
 // the same gap buildEngineConfig's FileExists already documents for this feature.
-func engineRunParamsFor(tsk task.Task) engine.RunParams {
-	return engine.RunParams{Task: tsk}
+// ProjectYAML is re-resolved from the repo's base commit rather than persisted, since it
+// lives in git (FR-016) and is cheap to re-read.
+func engineRunParamsFor(ctx context.Context, tsk task.Task) engine.RunParams {
+	params := engine.RunParams{Task: tsk}
+	if data, err := resolveProjectConfig(ctx, tsk.RepoURL, tsk.BaseCommit); err == nil {
+		params.ProjectYAML = data
+	}
+	return params
 }
 
 // dispatchOnDone is the post-RunTask callback createTask/resumeTask pass to
@@ -71,6 +95,15 @@ func createTask(ctx context.Context, store taskStore, sup dispatcher, repoURL, r
 		return task.Task{}, fmt.Errorf("resolve base commit for %s: %w", repoURL, err)
 	}
 
+	// FR-016: refuse to run against a repo whose .foreman/project.yaml is missing or
+	// invalid, before the task row is even created — same refusal the `fm run` path makes
+	// (cmd/fm/run.go step 3), just sourced from the repo itself since there's no task.yaml
+	// directory to search beside for a daemon-dispatched task.
+	projectYAML, err := resolveProjectConfig(ctx, repoURL, baseCommit)
+	if err != nil {
+		return task.Task{}, err
+	}
+
 	now := time.Now().UTC()
 	tsk := task.Task{
 		ID:          task.NewID("tsk"),
@@ -86,7 +119,7 @@ func createTask(ctx context.Context, store taskStore, sup dispatcher, repoURL, r
 		return task.Task{}, fmt.Errorf("create task: %w", err)
 	}
 
-	sup.DispatchWithReport(context.WithoutCancel(ctx), engine.RunParams{Task: created}, func(report engine.TaskReport, err error) {
+	sup.DispatchWithReport(context.WithoutCancel(ctx), engine.RunParams{Task: created, ProjectYAML: projectYAML}, func(report engine.TaskReport, err error) {
 		if dispatchOnDone != nil {
 			dispatchOnDone(context.WithoutCancel(ctx), report, err)
 		}

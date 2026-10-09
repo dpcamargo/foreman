@@ -21,6 +21,14 @@ for src in "$repo_root"/testdata/fixtures/*/src; do
   work="$(mktemp -d)"
   trap 'rm -rf "$work"' EXIT
   cp -R "$src/." "$work/"
+  # FR-016: real repos commit .foreman/project.yaml (spec 005 FR-012: "git-tracked files in
+  # the target repo"). The fixture's project.yaml lives at the fixture root, not under src/,
+  # so copy it in explicitly — without it the built bare repo has no project config and the
+  # daemon's FR-016 refusal check would correctly reject every fixture task.
+  if [ -f "$repo_root/testdata/fixtures/$name/project.yaml" ]; then
+    mkdir -p "$work/.foreman"
+    cp "$repo_root/testdata/fixtures/$name/project.yaml" "$work/.foreman/project.yaml"
+  fi
   git -C "$work" init -q -b main
   git -C "$work" add -A
   git -C "$work" -c commit.gpgsign=false commit -q -m "$name: base"

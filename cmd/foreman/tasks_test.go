@@ -228,6 +228,12 @@ func TestCreateTaskDispatchesAndReturnsID(t *testing.T) {
 	}
 	defer func() { resolveBaseCommit = origResolve }()
 
+	origProject := resolveProjectConfig
+	resolveProjectConfig = func(ctx context.Context, repoURL, baseCommit string) ([]byte, error) {
+		return []byte("version: 1\nverifier_image: img\nverify:\n  - [\"go\", \"test\"]\n"), nil
+	}
+	defer func() { resolveProjectConfig = origProject }()
+
 	store := newFakeTaskStore()
 	disp := &fakeDispatcher{}
 
@@ -259,7 +265,64 @@ func TestCreateTaskRejectsEmptyFields(t *testing.T) {
 		t.Error("expected an error for empty request text")
 	}
 	if len(disp.dispatched) != 0 {
-		t.Error("expected no dispatch for rejected input")
+		t.Error("no dispatch should happen for a rejected task")
+	}
+}
+
+// FR-016: a repo whose .foreman/project.yaml is missing or invalid must refuse the task
+// before it's even created — never dispatched with an empty/invalid config that would only
+// fail later at the verifier.
+func TestCreateTaskRefusesMissingProjectConfig(t *testing.T) {
+	origResolve := resolveBaseCommit
+	resolveBaseCommit = func(ctx context.Context, repoURL string) (string, error) {
+		return "0123456789abcdef0123456789abcdef01234567", nil
+	}
+	defer func() { resolveBaseCommit = origResolve }()
+
+	origProject := resolveProjectConfig
+	resolveProjectConfig = func(ctx context.Context, repoURL, baseCommit string) ([]byte, error) {
+		return nil, fmt.Errorf("read .foreman/project.yaml at %s: not found", baseCommit)
+	}
+	defer func() { resolveProjectConfig = origProject }()
+
+	store := newFakeTaskStore()
+	disp := &fakeDispatcher{}
+	_, err := createTask(context.Background(), store, disp, "https://example.com/x/y.git", "Add a Sub function")
+	if err == nil {
+		t.Fatal("expected createTask to refuse a repo with no .foreman/project.yaml")
+	}
+	if !strings.Contains(err.Error(), "project.yaml") {
+		t.Errorf("refusal should name the missing file, got: %v", err)
+	}
+	if len(disp.dispatched) != 0 {
+		t.Error("a refused task must never be dispatched")
+	}
+	if len(store.tasks) != 0 {
+		t.Error("a refused task must not be persisted")
+	}
+}
+
+func TestCreateTaskRefusesInvalidProjectConfig(t *testing.T) {
+	origResolve := resolveBaseCommit
+	resolveBaseCommit = func(ctx context.Context, repoURL string) (string, error) {
+		return "0123456789abcdef0123456789abcdef01234567", nil
+	}
+	defer func() { resolveBaseCommit = origResolve }()
+
+	origProject := resolveProjectConfig
+	resolveProjectConfig = func(ctx context.Context, repoURL, baseCommit string) ([]byte, error) {
+		return nil, fmt.Errorf("%s: invalid project config: missing verifier_image", repoURL)
+	}
+	defer func() { resolveProjectConfig = origProject }()
+
+	store := newFakeTaskStore()
+	disp := &fakeDispatcher{}
+	_, err := createTask(context.Background(), store, disp, "https://example.com/x/y.git", "Add a Sub function")
+	if err == nil {
+		t.Fatal("expected createTask to refuse a repo with an invalid .foreman/project.yaml")
+	}
+	if len(disp.dispatched) != 0 {
+		t.Error("a refused task must never be dispatched")
 	}
 }
 

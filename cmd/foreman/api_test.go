@@ -20,6 +20,12 @@ func TestAPICreateAndListTasks(t *testing.T) {
 	}
 	defer func() { resolveBaseCommit = origResolve }()
 
+	origProject := resolveProjectConfig
+	resolveProjectConfig = func(ctx context.Context, repoURL, baseCommit string) ([]byte, error) {
+		return []byte("version: 1\nverifier_image: img\nverify:\n  - [\"go\", \"test\"]\n"), nil
+	}
+	defer func() { resolveProjectConfig = origProject }()
+
 	store := newFakeTaskStore()
 	disp := &fakeDispatcher{}
 	mux := newAPIMux(store, disp)

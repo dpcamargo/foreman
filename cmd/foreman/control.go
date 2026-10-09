@@ -43,7 +43,7 @@ func resumeTask(ctx context.Context, store taskStore, sup dispatcherApprovals, t
 	if err := store.UpdateTaskStatus(ctx, taskID, tsk.Status, tsk.CurrentNodeID); err != nil {
 		return fmt.Errorf("update task status: %w", err)
 	}
-	sup.DispatchWithReport(context.WithoutCancel(ctx), engineRunParamsFor(tsk), func(report engine.TaskReport, err error) {
+	sup.DispatchWithReport(context.WithoutCancel(ctx), engineRunParamsFor(ctx, tsk), func(report engine.TaskReport, err error) {
 		if dispatchOnDone != nil {
 			dispatchOnDone(context.WithoutCancel(ctx), report, err)
 		}
