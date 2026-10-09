@@ -75,6 +75,28 @@ func handleUpdate(ctx context.Context, store fullStore, sup dispatcherApprovals,
 		}
 		reply(ctx, sender, chatID, fmt.Sprintf("created %s (pending)", tsk.ID))
 
+	case "new":
+		// /new <request text> — shorthand: uses the most recent task's repo.
+		requestText := strings.Join(cmd.Args, " ")
+		if requestText == "" {
+			reply(ctx, sender, chatID, "usage: /new <request text>")
+			return
+		}
+		repo := ""
+		if recent, err := store.RecentTasks(ctx, 1); err == nil && len(recent) == 1 {
+			repo = recent[0].RepoURL
+		}
+		if repo == "" {
+			reply(ctx, sender, chatID, "no previous task to infer repo from; use /task <repo> <request text>")
+			return
+		}
+		tsk, err := createTask(ctx, store, sup, repo, requestText)
+		if err != nil {
+			reply(ctx, sender, chatID, "could not create task: "+err.Error())
+			return
+		}
+		reply(ctx, sender, chatID, fmt.Sprintf("created %s (pending) on %s", tsk.ID, repo))
+
 	case "status":
 		id := ""
 		if len(cmd.Args) > 0 {
@@ -309,14 +331,16 @@ func handleCallbackQuery(ctx context.Context, store fullStore, sup approvalWaite
 }
 
 const helpText = `commands:
-/task <repo> <request text>   create a task
+/new <request text>           create a task on the last-used repo
+/task <repo> <request text>   create a task (repo: short name like addrepo, a path, or a URL)
 /status [id]                  show a task's progress (omit id for the most recent)
-/tasks                        list recent tasks
+/tasks                        list active tasks
 /pause <id|all> [now]         pause a task (or all), optionally immediately
 /resume <id>                  resume a paused task
 /cancel <id>                  cancel a task
 /reject <id> <reason>         reject a pending approval for a task
 /answer <id> <text>           answer a blocked_human question
+/confirm <approval_id>        confirm a pending merge (second tap)
 /diff <id>                    send a delivered task's patch as a .patch file
 /logs <id> [node]             show recent run output for a task, optionally one node
 /budget                       show spend/quota summary across active tasks

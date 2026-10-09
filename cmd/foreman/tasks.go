@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -77,6 +79,23 @@ func engineRunParamsFor(ctx context.Context, tsk task.Task) engine.RunParams {
 // sender, and integrator all exist — nil in tests that don't exercise delivery.
 var dispatchOnDone func(ctx context.Context, report engine.TaskReport, err error)
 
+// resolveRepoURL maps a short repo name to a concrete git URL or path. Bare names like
+// "addrepo" resolve to $FOREMAN_HOME/work/fixtures/<name>.git so /task addrepo works
+// without typing a full path. URLs and absolute paths pass through unchanged.
+var resolveRepoURL = func(name string) string {
+	name = strings.TrimSpace(name)
+	if strings.Contains(name, "://") || strings.HasPrefix(name, "git@") || strings.HasPrefix(name, "/") || strings.HasPrefix(name, "./") || strings.HasPrefix(name, "../") {
+		return name
+	}
+	home := os.Getenv("FOREMAN_HOME")
+	if home == "" {
+		if h, err := os.UserHomeDir(); err == nil {
+			home = filepath.Join(h, ".foreman")
+		}
+	}
+	return filepath.Join(home, "work", "fixtures", name+".git")
+}
+
 // createTask creates a pending task.Task for repoURL/requestText and hands it to sup for
 // dispatch, returning immediately with the new task id (spec US1: "/task" acknowledges
 // within seconds, the loop itself runs in the background).
@@ -89,6 +108,7 @@ func createTask(ctx context.Context, store taskStore, sup dispatcher, repoURL, r
 	if requestText == "" {
 		return task.Task{}, fmt.Errorf("request text is required")
 	}
+	repoURL = resolveRepoURL(repoURL)
 
 	baseCommit, err := resolveBaseCommit(ctx, repoURL)
 	if err != nil {
