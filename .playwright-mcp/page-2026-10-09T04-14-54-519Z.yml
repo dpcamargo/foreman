@@ -1,0 +1,348 @@
+- generic [ref=f129e2]:
+  - heading "0 notifications" [level=2] [ref=f129e3]
+  - generic [ref=f129e4]:
+    - generic:
+      - generic "Skip navigation menu":
+        - generic [ref=f129e5]:
+          - button "Skip to search" [ref=f129e6] [cursor=pointer]
+          - button "Skip to main content" [ref=f129e9] [cursor=pointer]
+          - button "Skip to primary content" [ref=f129e12] [cursor=pointer]
+          - button "Skip to aside" [ref=f129e15] [cursor=pointer]
+          - button "Skip to footer" [ref=f129e18] [cursor=pointer]
+          - button "Close jump menu" [ref=f129e22] [cursor=pointer]
+    - generic [ref=f129e26]:
+      - banner [ref=f129e28]:
+        - generic [ref=f129e31]:
+          - button [ref=f129e32] [cursor=pointer]:
+            - img "LinkedIn" [ref=f129e33]
+          - generic [ref=f129e35]:
+            - status [ref=f129e36]
+            - search [ref=f129e37]:
+              - textbox "Search" [ref=f129e42]
+          - generic [ref=f129e44]:
+            - figure [aria-hidden] [ref=f129e49]
+            - navigation [ref=f129e53]:
+              - list [ref=f129e54]:
+                - listitem [ref=f129e55]:
+                  - button "Home, 1 new notification" [ref=f129e56] [cursor=pointer]:
+                    - generic [ref=f129e61]: Home
+                - listitem [ref=f129e63]:
+                  - link "Network, 0 new notifications" [ref=f129e64] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/mynetwork
+                    - generic [ref=f129e68]: Network
+                - listitem [ref=f129e70]:
+                  - link "Jobs, 0 new notifications" [ref=f129e71] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/jobs/
+                    - generic [ref=f129e75]: Jobs
+                - listitem [ref=f129e77]:
+                  - link "Messaging, 0 new notifications" [ref=f129e78] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/messaging/
+                    - generic [ref=f129e82]: Messaging
+                - listitem [ref=f129e84]:
+                  - link "Notifications, 0 new notifications" [ref=f129e85] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/notifications/
+                    - generic [ref=f129e89]: Notifications
+                - listitem [ref=f129e91]:
+                  - button "Me" [ref=f129e92] [cursor=pointer]:
+                    - figure [aria-hidden] [ref=f129e94]
+            - navigation [ref=f129e101]:
+              - list [ref=f129e102]:
+                - listitem [ref=f129e103]:
+                  - button "For Business" [ref=f129e104] [cursor=pointer]
+                - listitem [ref=f129e112]:
+                  - link "Advertise, 0 new notifications" [ref=f129e113] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/campaignmanager/accounts/
+                    - generic [ref=f129e118]: Advertise
+      - generic [ref=f129e121]:
+        - toolbar [ref=f129e122]:
+          - generic [ref=f129e130]:
+            - link [ref=f129e131] [cursor=pointer]:
+              - /url: https://www.linkedin.com/in/dpcamargo/
+              - generic "Dario Pompeu de Camargo Neto" [ref=f129e132]:
+                - figure [aria-hidden] [ref=f129e133]
+                - generic [ref=f129e134]:
+                  - paragraph [ref=f129e135]: Dario Pompeu de Camargo Neto
+                  - paragraph [ref=f129e137]: Software Engineer | Applied AI Engineer | Go, Python, Java | Distributed Systems | Cloud
+            - generic [ref=f129e138]:
+              - button "Resources" [ref=f129e140] [cursor=pointer]
+              - button "Enhance profile" [ref=f129e144] [cursor=pointer]
+              - link "Add section" [ref=f129e148] [cursor=pointer]:
+                - /url: https://www.linkedin.com/in/dpcamargo/details/skills/
+              - button "Open to" [ref=f129e152] [cursor=pointer]
+        - main [ref=f129e155]:
+          - generic [ref=f129e157]:
+            - region "Primary content" [ref=f129e158]:
+              - generic [ref=f129e162]:
+                - generic [ref=f129e163]:
+                  - generic [ref=f129e164]:
+                    - generic [ref=f129e165]:
+                      - button "Navigate back to profile main screen" [ref=f129e166] [cursor=pointer]
+                      - paragraph [ref=f129e170]: Skills
+                    - generic [ref=f129e171]:
+                      - button "Resources" [ref=f129e172] [cursor=pointer]
+                      - link "Add a skill" [ref=f129e176] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/skills/edit/forms/new/
+                  - navigation [ref=f129e180]:
+                    - list [ref=f129e181]:
+                      - listitem [ref=f129e182]:
+                        - button "All" [ref=f129e183] [cursor=pointer]
+                      - listitem [ref=f129e186]:
+                        - button "Industry Knowledge" [ref=f129e187] [cursor=pointer]
+                      - listitem [ref=f129e190]:
+                        - button "Tools & Technologies" [ref=f129e191] [cursor=pointer]
+                      - listitem [ref=f129e194]:
+                        - button "Other Skills" [ref=f129e195] [cursor=pointer]
+                - generic [ref=f129e200]:
+                  - generic [ref=f129e202]:
+                    - paragraph [ref=f129e208]: Agentic AI Development
+                    - link "Edit Agentic AI Development skill" [ref=f129e210] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/in/dpcamargo/details/skills/edit/forms/57/
+                  - generic [ref=f129e216]:
+                    - paragraph [ref=f129e222]: Artificial Intelligence (AI)
+                    - link "Edit Artificial Intelligence (AI) skill" [ref=f129e224] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/in/dpcamargo/details/skills/edit/forms/55/
+                  - generic [ref=f129e230]:
+                    - paragraph [ref=f129e236]: Distributed Systems
+                    - link "Edit Distributed Systems skill" [ref=f129e238] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/in/dpcamargo/details/skills/edit/forms/56/
+                  - generic [ref=f129e244]:
+                    - generic [ref=f129e246]:
+                      - paragraph [ref=f129e250]: Cloud Storage
+                      - list [ref=f129e252]:
+                        - listitem [ref=f129e253]:
+                          - figure [aria-hidden] [ref=f129e254]
+                          - paragraph [ref=f129e256]: Google Cloud Computing Foundations Certificate
+                    - link "Edit Cloud Storage skill" [ref=f129e258] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/in/dpcamargo/details/skills/edit/forms/51/
+                  - generic [ref=f129e264]:
+                    - generic [ref=f129e266]:
+                      - paragraph [ref=f129e270]: Google Cloud Platform (GCP)
+                      - list [ref=f129e272]:
+                        - listitem [ref=f129e273]:
+                          - figure [aria-hidden] [ref=f129e274]
+                          - paragraph [ref=f129e276]: Google Cloud Computing Foundations Certificate
+                        - listitem [ref=f129e277]:
+                          - figure [aria-hidden] [ref=f129e278]
+                          - paragraph [ref=f129e280]: Implement Load Balancing on Compute Engine Skill Badge
+                        - listitem [ref=f129e281]:
+                          - figure [aria-hidden] [ref=f129e282]
+                          - paragraph [ref=f129e284]: Build Infrastructure with Terraform on Google Cloud Skill Badge
+                    - link "Edit Google Cloud Platform (GCP) skill" [ref=f129e286] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/in/dpcamargo/details/skills/edit/forms/52/
+                  - generic [ref=f129e292]:
+                    - generic [ref=f129e294]:
+                      - paragraph [ref=f129e298]: GCP Core Services
+                      - list [ref=f129e300]:
+                        - listitem [ref=f129e301]:
+                          - figure [aria-hidden] [ref=f129e302]
+                          - paragraph [ref=f129e304]: Google Cloud Computing Foundations Certificate
+                    - link "Edit GCP Core Services skill" [ref=f129e306] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/in/dpcamargo/details/skills/edit/forms/53/
+                  - generic [ref=f129e312]:
+                    - generic [ref=f129e314]:
+                      - paragraph [ref=f129e318]: Serverless Computing
+                      - list [ref=f129e320]:
+                        - listitem [ref=f129e321]:
+                          - figure [aria-hidden] [ref=f129e322]
+                          - paragraph [ref=f129e324]: Google Cloud Computing Foundations Certificate
+                    - link "Edit Serverless Computing skill" [ref=f129e326] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/in/dpcamargo/details/skills/edit/forms/54/
+                  - generic [ref=f129e332]:
+                    - generic [ref=f129e334]:
+                      - paragraph [ref=f129e338]: Microservices
+                      - list [ref=f129e340]:
+                        - listitem [ref=f129e341]:
+                          - figure [aria-hidden] [ref=f129e342]
+                          - paragraph [ref=f129e344]: Software Engineer at Mercado Livre Brasil
+                        - listitem [ref=f129e345]:
+                          - figure [aria-hidden] [ref=f129e346]
+                          - paragraph [ref=f129e348]:
+                            - link "See Insights" [ref=f129e351] [cursor=pointer]:
+                              - /url: https://www.linkedin.com/in/dpcamargo/skill-insights/47/
+                              - text: 2 educational experiences at FIAP and 1 other school
+                        - listitem [ref=f129e352]:
+                          - figure [aria-hidden] [ref=f129e353]
+                          - paragraph [ref=f129e355]: Go Expert
+                    - link "Edit Microservices skill" [ref=f129e357] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/in/dpcamargo/details/skills/edit/forms/47/
+                  - generic [ref=f129e363]:
+                    - generic [ref=f129e365]:
+                      - paragraph [ref=f129e369]: Spring Framework
+                      - list [ref=f129e371]:
+                        - listitem [ref=f129e372]:
+                          - figure [aria-hidden] [ref=f129e373]
+                          - paragraph [ref=f129e375]: FIAP
+                    - link "Edit Spring Framework skill" [ref=f129e377] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/in/dpcamargo/details/skills/edit/forms/26/
+                  - generic [ref=f129e383]:
+                    - generic [ref=f129e385]:
+                      - paragraph [ref=f129e389]: Spring Boot
+                      - list [ref=f129e391]:
+                        - listitem [ref=f129e392]:
+                          - figure [aria-hidden] [ref=f129e393]
+                          - paragraph [ref=f129e395]: FIAP
+                    - link "Edit Spring Boot skill" [ref=f129e397] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/in/dpcamargo/details/skills/edit/forms/35/
+            - complementary "Aside" [ref=f129e402]:
+              - generic [ref=f129e404]:
+                - iframe [ref=f129e407]:
+                  - main "Work With Us Container" [ref=f130e3]:
+                    - generic [ref=f130e7]:
+                      - img "Dario" [ref=f130e8]
+                      - link [ref=f130e9] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/li/tscp/sct?destinationUrl=http%3A%2F%2Fwww.linkedin.com%2Fcompany%2F29419%2Flife&trackingEvent=%5B%7B%22eventInfo%22%3A%7B%22appId%22%3A%22com.linkedin.ads.rendering.d_web%22%2C%22eventName%22%3A%22SponsoredRightRailContentActionEvent%22%2C%22topicName%22%3A%22SponsoredRightRailContentActionEvent%22%7D%2C%22eventBody%22%3A%7B%22sponsoredEventHeader%22%3A%7B%22encryptedTrackingData%22%3A%22CwEAAAGhHt8Ay78gX6ecGoOQQ8urHE3PGQDW8mMr-DwdDamODCl2pY4fIQsil9vxcG9oMAFOwulj-mHHijl258BkqGf7wQbGDvklLlsdDfashQhBUoGXsjupHK_fYSjdnhm1jslxD-WHHMxe4ISfskkzgjvzeNAPnlDrYKZxBxWKQJUyy4Q_k9-7K-y5zantwoMxXvmh2KGMzppAN-Ggpb1O31gA7yNTuG3gIJokETDVY6kU1G5Btn-bPaT3955g_Kf8zrv31HNr2kU4FHYvDZUdmOv5-106pDYJQjW4hi-fVQh4D0rnQgmkzuepeEYyDLQjA9xUbOwygQRHRTvF7EsgJwAbja7FpoY7B4H8u8vYKud1QZmKyMqXE8zWr0imk7cIwcVLQ5Ey2u7OYaQdV65EfMpjGpzTEs71T9mCt2s9cnVC2V8Gz5kihSU4FzI6FVulDy1NqsPKRRMXPcX6MEKN365GXiOxVU59AenbsCTNZpmqBqk1wlY4RkXZ0sdRcIXP_PKftHgt9ZRE58-MCXpkUsm-owCixk-yiFJFdiGSlkRRKkCtkZEyldu5gFaAXZXHajokZ4Oe_s4qTo0Oqd42ZI1nLLGNjoucCDkfCztKaZ40aQZnrpbQdsq4keKprpvg9_H8ZklLBX34bhqrMSJuD18daAHYL5LzlrxsLVgiph2c9f2TvmqHjHPkjFkmF3c-LYaAdYRDnZiDYQBEmRlmWL9IP-_il3tnHCliDG8cjaTjga9QmrmvPgXq1OH6nCVgMx-p-DRSbSgdsaMsW7EkBKNbm-DLE-bF9n2ya89DxPKdyBg3_0FMQJaENB_KrSXSwFQGIMRFsBshNY7fiTnwUV-aKnZQ9glywW3pRYVK4SxVtvVXWdvWGoHNeS7pIv1XMH_XHOc_xOMTz6b8xNXIJI4f59fLCo4DFIm4iHPHhCRbOt7uv-CAnsjRNpCpsMOzNZOGcsYcZH7qpdx6VPCOa20RuNrzkpeK4pPN0HoYysqjNOHUPKlglA00oufmeliAo0Wa0-ncd4S-ccWDwCJTxKApmUnoHm7cVJm1ZD30Gh7qfJtl_zaXlQjEYmq9LItS2y_3BaF--KQDXxauHs-b3giFUSfHT5GRZKNRWwKahdYI2w%22%7D%2C%22header%22%3A%7B%22pageInstance%22%3A%7B%22pageUrn%22%3A%22urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_skills_details%22%2C%22trackingId%22%3A%22ab3dde64-6999-4565-8979-ba2a0b223417%22%7D%2C%22time%22%3A1791519293593%2C%22version%22%3A%220.0.0%22%7D%2C%22requestHeader%22%3A%7B%22pageKey%22%3A%22d_flagship3_profile_view_base_skills_details%22%2C%22interfaceLocale%22%3A%22en-US%22%7D%7D%7D%5D&csrfToken=ajax%3A4608379839193812284
+                        - img "Plastipak" [ref=f130e10]
+                    - generic [ref=f130e11]:
+                      - generic [ref=f130e12]:
+                        - paragraph [ref=f130e13]: Dario, explore relevant opportunities with Plastipak
+                        - paragraph [ref=f130e14]: Get the latest jobs and industry news
+                      - link "Follow" [ref=f130e15] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/li/tscp/sct?destinationUrl=http%3A%2F%2Fwww.linkedin.com%2Fcompany%2F29419%2Flife%3FisFollowingPage%3Dtrue&trackingEvent=%5B%7B%22eventInfo%22%3A%7B%22appId%22%3A%22com.linkedin.ads.rendering.d_web%22%2C%22eventName%22%3A%22SponsoredRightRailContentActionEvent%22%2C%22topicName%22%3A%22SponsoredRightRailContentActionEvent%22%7D%2C%22eventBody%22%3A%7B%22sponsoredEventHeader%22%3A%7B%22encryptedTrackingData%22%3A%22CwEAAAGhHt8Ay0rPuU3zF3FxzfQrKzBUPwBeHWEaVQWBlBU7b__KofxdfiVrrfMJLwfQk6gHVOeLQHUeDzswW_29cUDlUvFyNsKTt08k5fLujl-z4doOkaiBaUaWSCdTnslNyPM83pSz91bCgD_B8_lE-qGbES3zUx5YCfdWbuQljj9XUZkR-eABU3Dr1ScaVIisrClmhA73CUmqd1yGR6Mv2_BhwpkOVdeXmB6XfSe3b6CAEgDYwL_X7QzLZSLfpTGKxbyglT6uoeySmJDED3HN_uMFP46HKckN1M-R1kQggasx0yXkTsj9nr8rUGwSDLZb0IsiOuQPsxXQqknGuHCyFyvrCkM-KY_Un0A0ijPsp8NzPwgaYglxetvJNiqFWDxGOuU50y1LpdGUhw_aIMVnbR3mPnp4z2SrbXkiI_MWKthPbqDg2weX00qe2emBwmsxP5-nE30PhPxqSpav7nKPkYgsoHU19Ad2XOZGCck-jcaPuShE5Tb9Y-rB8M4NT70GMILz3YpL6abqmLLuD0Ewo06iBpwWqjgwJmSvkft8Rs3DqpfZwX68jJCZexk7gQQv5DanDcvJbY4RJlOIaNckKz3YbAOfbJ4l8ZH6E07S1ige8k5tcAK8RgfMa4fU7uyjgXtnJ0DowITwX6ppvv4LQmLy32Y-iVd4rG-s9hBnVGAvNPRpluSN41jtDHxwV1Pb24fcx3NGF636-Fv1Wh6iCGaPLkcNkNzN5Z8lptKiY3KhVr00r3uXzLosKBaALf_VjRnXK8KC8iOY6JJwE4WwMQjATIgfWH-vp3vceg3p0V8mJQqmBjd2itNa5ojFeIyRHek5zv-I84DMXNmTuxdCcPrlqlZs_8fvcgBy-kPj6FYUMNQbiWCl-reAm20Frb0UdfUYL9hyTiEIJCRadFngxkAgK4T0Kpty81Z83v_HdTpy1oA8oW8_NA9h-RPcVBd9wgo0h8wARrfeQAnAtSPULR1RT8c1aLrjtbt2IKUjn6XGtKaiEBWm620QcEGx8MQwc-D8mxsUHV9RRgyhewJGNA8dTYX8zw7UNKBTTQAq2L89OSRvQFhF0eXGIsrg_EwFkDLt-t_6co4cRlrDHb-NvteVzZLpURVmkcH__Bb-L8_XpDrHtgFu-JXlP-oekzEqWNHM1Q6sUCOkhF4eIFlArw%22%7D%2C%22header%22%3A%7B%22pageInstance%22%3A%7B%22pageUrn%22%3A%22urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_skills_details%22%2C%22trackingId%22%3A%22cffd842a-9737-4352-a3aa-48c1579d8419%22%7D%2C%22time%22%3A1791519293593%2C%22version%22%3A%220.0.0%22%7D%2C%22requestHeader%22%3A%7B%22pageKey%22%3A%22d_flagship3_profile_view_base_skills_details%22%2C%22interfaceLocale%22%3A%22en-US%22%7D%7D%7D%5D&csrfToken=ajax%3A4608379839193812284
+                    - generic [ref=f130e16]:
+                      - paragraph [ref=f130e17]: Promoted
+                      - button "Ad Options" [ref=f130e18] [cursor=pointer]
+                - generic [ref=f129e410]:
+                  - generic [ref=f129e412]:
+                    - heading "Who your viewers also viewed" [level=3] [ref=f129e414]
+                    - paragraph [ref=f129e415]: Private to you
+                  - generic [ref=f129e417]:
+                    - button [ref=f129e418] [cursor=pointer]:
+                      - generic [ref=f129e419]:
+                        - figure [aria-hidden] [ref=f129e420]
+                        - generic [ref=f129e421]:
+                          - paragraph [ref=f129e424]: Software Developer at Mercado Livre Brasil
+                          - generic [ref=f129e425]:
+                            - figure [aria-hidden] [ref=f129e426]
+                            - paragraph [ref=f129e427]: Mercado Livre Brasil
+                          - button "View" [ref=f129e428]
+                    - button [ref=f129e431] [cursor=pointer]:
+                      - generic [ref=f129e432]:
+                        - figure [aria-hidden] [ref=f129e433]
+                        - generic [ref=f129e434]:
+                          - paragraph [ref=f129e437]: Someone at Ardan Labs
+                          - generic [ref=f129e438]:
+                            - figure [aria-hidden] [ref=f129e439]
+                            - paragraph [ref=f129e440]: Ardan Labs
+                          - button "View" [ref=f129e441]
+                    - button [ref=f129e444] [cursor=pointer]:
+                      - generic [ref=f129e445]:
+                        - figure [aria-hidden] [ref=f129e446]
+                        - generic [ref=f129e447]:
+                          - paragraph [ref=f129e450]: Software Developer at Luizalabs
+                          - generic [ref=f129e451]:
+                            - figure [aria-hidden] [ref=f129e452]
+                            - paragraph [ref=f129e453]: Luizalabs
+                          - button "View" [ref=f129e454]
+                    - button [ref=f129e457] [cursor=pointer]:
+                      - generic [ref=f129e458]:
+                        - figure [aria-hidden] [ref=f129e459]
+                        - generic [ref=f129e460]:
+                          - paragraph [ref=f129e463]: Someone at Villa Affetto
+                          - generic [ref=f129e464]:
+                            - figure [aria-hidden] [ref=f129e465]
+                            - paragraph [ref=f129e466]: Villa Affetto
+                          - button "View" [ref=f129e467]
+            - generic "Footer" [ref=f129e470]:
+              - generic [ref=f129e473]:
+                - generic [ref=f129e474]:
+                  - navigation [ref=f129e475]:
+                    - link [ref=f129e476] [cursor=pointer]:
+                      - /url: https://about.linkedin.com/
+                      - paragraph [ref=f129e477]: About
+                    - link [ref=f129e478] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/accessibility/
+                      - paragraph [ref=f129e479]: Accessibility
+                    - link [ref=f129e480] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/talent-solutions?trk=flagship_nav&veh=li-footer-lts-control&src=li-footer
+                      - paragraph [ref=f129e481]: Talent Solutions
+                    - link [ref=f129e482] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/legal/professional-community-policies/
+                      - paragraph [ref=f129e483]: Community Guidelines
+                    - link [ref=f129e484] [cursor=pointer]:
+                      - /url: https://careers.linkedin.com/
+                      - paragraph [ref=f129e485]: Careers
+                    - link [ref=f129e486] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/advertise?trk=n_nav_lms_f&src=li-footer
+                      - paragraph [ref=f129e487]: Marketing Solutions
+                    - button [ref=f129e488] [cursor=pointer]:
+                      - paragraph [ref=f129e490]: Privacy & Terms
+                    - link [ref=f129e493] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/help/linkedin/answer/62931/
+                      - paragraph [ref=f129e494]: Ad Choices
+                    - link [ref=f129e495] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/ad/start/?trk=n_nav_ads_rr
+                      - paragraph [ref=f129e496]: Advertising
+                    - link [ref=f129e497] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/sales-solutions?trk=flagship_nav&veh=li-footer-lss-control&src=li-footer
+                      - paragraph [ref=f129e498]: Sales Solutions
+                    - link [ref=f129e499] [cursor=pointer]:
+                      - /url: https://mobile.linkedin.com/
+                      - paragraph [ref=f129e500]: Mobile
+                    - link [ref=f129e501] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/grow?src=li-footer
+                      - paragraph [ref=f129e502]: Small Business
+                    - link [ref=f129e503] [cursor=pointer]:
+                      - /url: https://safety.linkedin.com/
+                      - paragraph [ref=f129e504]: Safety Center
+                  - paragraph [ref=f129e506]: LinkedIn Corporation © 2026
+                - generic [ref=f129e507]:
+                  - list [ref=f129e508]:
+                    - listitem [ref=f129e509]:
+                      - generic [ref=f129e513]:
+                        - link [ref=f129e514] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/help/linkedin/
+                          - paragraph [ref=f129e515]: Questions?
+                        - paragraph [ref=f129e516]: Visit our Help Center.
+                    - listitem [ref=f129e517]:
+                      - generic [ref=f129e521]:
+                        - link [ref=f129e522] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/mypreferences/d/
+                          - paragraph [ref=f129e523]: Manage your account and privacy
+                        - paragraph [ref=f129e524]: Go to your Settings.
+                    - listitem [ref=f129e525]:
+                      - generic [ref=f129e529]:
+                        - link [ref=f129e530] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/help/linkedin/answer/a1339724/
+                          - paragraph [ref=f129e531]: Recommendation transparency
+                        - paragraph [ref=f129e532]: Learn more about Recommended Content.
+                  - generic [ref=f129e534]:
+                    - paragraph [ref=f129e536]: Select language
+                    - combobox "Select language" [ref=f129e538] [cursor=pointer]:
+                      - option "العربية (Arabic)"
+                      - option "বাংলা (Bangla)"
+                      - option "Čeština (Czech)"
+                      - option "Dansk (Danish)"
+                      - option "Deutsch (German)"
+                      - option "Ελληνικά (Greek)"
+                      - option "English (English)" [selected]
+                      - option "Español (Spanish)"
+                      - option "فارسی (Persian)"
+                      - option "Suomi (Finnish)"
+                      - option "Français (French)"
+                      - option "हिंदी (Hindi)"
+                      - option "Magyar (Hungarian)"
+                      - option "Bahasa Indonesia (Indonesian)"
+                      - option "Italiano (Italian)"
+                      - option "עברית (Hebrew)"
+                      - option "日本語 (Japanese)"
+                      - option "한국어 (Korean)"
+                      - option "मराठी (Marathi)"
+                      - option "Bahasa Malaysia (Malay)"
+                      - option "Nederlands (Dutch)"
+                      - option "Norsk (Norwegian)"
+                      - option "ਪੰਜਾਬੀ (Punjabi)"
+                      - option "Polski (Polish)"
+                      - option "Português (Portuguese)"
+                      - option "Română (Romanian)"
+                      - option "Русский (Russian)"
+                      - option "Svenska (Swedish)"
+                      - option "తెలుగు (Telugu)"
+                      - option "ภาษาไทย (Thai)"
+                      - option "Tagalog (Tagalog)"
+                      - option "Türkçe (Turkish)"
+                      - option "Українська (Ukrainian)"
+                      - option "Tiếng Việt (Vietnamese)"
+                      - option "简体中文 (Chinese (Simplified))"
+                      - option "正體中文 (Chinese (Traditional))"
+  - iframe [ref=f129e539]:
+    - region [ref=f131e12]

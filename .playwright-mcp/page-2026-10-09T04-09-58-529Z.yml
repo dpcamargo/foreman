@@ -1,0 +1,350 @@
+- generic [ref=f56e2]:
+  - heading "0 notifications" [level=2] [ref=f56e3]
+  - generic [ref=f56e4]:
+    - generic:
+      - generic "Skip navigation menu":
+        - button "Close jump menu" [ref=f56e6] [cursor=pointer]
+    - generic [ref=f56e9]:
+      - banner [ref=f56e11]:
+        - generic [ref=f56e14]:
+          - button [ref=f56e15] [cursor=pointer]
+          - generic [ref=f56e17]:
+            - status [ref=f56e18]
+            - search [ref=f56e19]:
+              - textbox "Search" [ref=f56e23]
+          - generic [ref=f56e25]:
+            - navigation [ref=f56e29]:
+              - list [ref=f56e30]:
+                - listitem [ref=f56e31]:
+                  - button "Home, 1 new notification" [ref=f56e32] [cursor=pointer]:
+                    - generic [ref=f56e36]: Home
+                - listitem [ref=f56e38]:
+                  - link "Network, 0 new notifications" [ref=f56e39] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/mynetwork
+                    - generic [ref=f56e43]: Network
+                - listitem [ref=f56e45]:
+                  - link "Jobs, 0 new notifications" [ref=f56e46] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/jobs/
+                    - generic [ref=f56e50]: Jobs
+                - listitem [ref=f56e52]:
+                  - link "Messaging, 0 new notifications" [ref=f56e53] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/messaging/
+                    - generic [ref=f56e57]: Messaging
+                - listitem [ref=f56e59]:
+                  - link "Notifications, 0 new notifications" [ref=f56e60] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/notifications/
+                    - generic [ref=f56e64]: Notifications
+                - listitem [ref=f56e66]:
+                  - button "Me" [ref=f56e67] [cursor=pointer]:
+                    - figure [aria-hidden] [ref=f56e69]
+            - navigation [ref=f56e75]:
+              - list [ref=f56e76]:
+                - listitem [ref=f56e77]:
+                  - button "For Business" [ref=f56e78] [cursor=pointer]
+                - listitem [ref=f56e85]:
+                  - link "Advertise, 0 new notifications" [ref=f56e86] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/campaignmanager/accounts/
+                    - generic [ref=f56e89]: Advertise
+      - generic [ref=f56e92]:
+        - toolbar [ref=f56e93]:
+          - link [ref=f56e102] [cursor=pointer]:
+            - /url: https://www.linkedin.com/in/dpcamargo/
+            - generic "Dario Pompeu de Camargo Neto" [ref=f56e103]:
+              - figure [aria-hidden] [ref=f56e104]
+              - generic [ref=f56e105]:
+                - paragraph [ref=f56e106]: Dario Pompeu de Camargo Neto
+                - paragraph [ref=f56e108]: Software Engineer | Applied AI Engineer | Go, Python, Java | Distributed Systems | Cloud
+        - main [ref=f56e109]:
+          - generic [ref=f56e111]:
+            - region "Primary content" [ref=f56e112]:
+              - generic [ref=f56e116]:
+                - generic [ref=f56e117]:
+                  - generic [ref=f56e118]:
+                    - button "Navigate back to profile main screen" [ref=f56e120] [cursor=pointer]
+                    - paragraph [ref=f56e123]: Experience
+                  - button "Add a position or career break" [ref=f56e125] [cursor=pointer]
+                - generic [ref=f56e130]:
+                  - generic [ref=f56e133]:
+                    - link [ref=f56e134] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/company/534219/
+                      - figure [ref=f56e135]
+                    - generic [ref=f56e136]:
+                      - link [ref=f56e137] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/experience/edit/forms/2316975668/
+                        - generic [ref=f56e138]:
+                          - generic [ref=f56e140]:
+                            - paragraph [ref=f56e141]: Software Engineer
+                            - paragraph [ref=f56e142]: Mercado Livre · Full-time
+                          - paragraph [ref=f56e143]: Jan 2024 - Present · 2 yrs 10 mos
+                          - paragraph [ref=f56e144]: São Paulo, São Paulo, Brazil · Hybrid
+                      - paragraph [ref=f56e146]:
+                        - generic [ref=f56e147]: • Developed scalable and high-performance REST microservices using Go and Java, optimizing e-commerce and logistics processes.• Implemented robust APIs for seamless integration with internal and external systems, ensuring high availability and low latency.• Contributed to the design and evolution of distributed architectures, applying Clean Architecture and Domain-Driven Design (DDD) for better modularity and maintainability.• Integrated messaging systems for asynchronous and scalable data processing.• Monitored system performance using tools like Datadog and Grafana, identifying and resolving critical bottlenecks.• Collaborated in agile teams, actively participating in code reviews and technical discussions to improve software quality.
+                      - paragraph [ref=f56e148]:
+                        - link "Desenvolvimento de software, Microservices and +12 skills" [ref=f56e149] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/in/dpcamargo/overlay/2316975668/skill-associations-details/?associationType=position
+                  - link "Edit Software Engineer at Mercado Livre" [ref=f56e153] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/in/dpcamargo/details/experience/edit/forms/2316975668/
+                - generic [ref=f56e158]:
+                  - generic [ref=f56e161]:
+                    - link [ref=f56e162] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/company/317026/
+                      - figure [ref=f56e163]
+                    - generic [ref=f56e164]:
+                      - link [ref=f56e165] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/experience/edit/forms/2112666661/
+                        - generic [ref=f56e166]:
+                          - generic [ref=f56e168]:
+                            - paragraph [ref=f56e169]: Software Engineer
+                            - paragraph [ref=f56e170]: Timenow · Full-time
+                          - paragraph [ref=f56e171]: May 2022 - Dec 2023 · 1 yr 8 mos
+                          - paragraph [ref=f56e172]: São Paulo, São Paulo, Brazil · Remote
+                      - paragraph [ref=f56e174]:
+                        - generic [ref=f56e175]: • Led the development of automation solutions to monitor critical processes and ensure safety at the Braskem-RJ plant.• Designed and implemented real-time monitoring systems, improving operational efficiency and safety.• Developed custom algorithms to identify and prevent potential security issues, reducing downtime.Integrated and optimized data acquisition systems to enhance operational effectiveness.• Collaborated closely with cross-functional teams to ensure compliance with quality and safety standards.
+                      - paragraph [ref=f56e176]:
+                        - link "Desenvolvimento de software, SQL and +6 skills" [ref=f56e177] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/in/dpcamargo/overlay/2112666661/skill-associations-details/?associationType=position
+                  - link "Edit Software Engineer at Timenow" [ref=f56e181] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/in/dpcamargo/details/experience/edit/forms/2112666661/
+                - generic [ref=f56e186]:
+                  - generic [ref=f56e189]:
+                    - link [ref=f56e190] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/company/165916/
+                      - figure [ref=f56e191]
+                    - generic [ref=f56e192]:
+                      - link [ref=f56e193] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/experience/edit/forms/1791958452/
+                        - generic [ref=f56e194]:
+                          - generic [ref=f56e196]:
+                            - paragraph [ref=f56e197]: Engineering Leader
+                            - paragraph [ref=f56e198]: Semcon · Full-time
+                          - paragraph [ref=f56e199]: Jan 2020 - Jul 2020 · 7 mos
+                          - paragraph [ref=f56e200]: São Paulo, Brazil
+                      - paragraph [ref=f56e202]:
+                        - generic [ref=f56e203]: • Managed the instrumentation team for Mercedes-Benz bus and truck validation projects, delivering results on time and with high quality.• Developed and implemented NVH (Noise, Vibration, and Harshness) projects using LabVIEW and Python for automation and data analysis.• Supervised third-party solutions, ensuring compliance with technical specifications and usability standards.
+                      - paragraph [ref=f56e204]:
+                        - link "Desenvolvimento de software, CAN bus and +4 skills" [ref=f56e205] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/in/dpcamargo/overlay/1791958452/skill-associations-details/?associationType=position
+                  - link "Edit Engineering Leader at Semcon" [ref=f56e209] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/in/dpcamargo/details/experience/edit/forms/1791958452/
+                - generic [ref=f56e214]:
+                  - generic [ref=f56e217]:
+                    - link [ref=f56e218] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/company/2678112/
+                      - figure [ref=f56e219]
+                    - generic [ref=f56e220]:
+                      - link [ref=f56e221] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/experience/edit/forms/1791957507/
+                        - generic [ref=f56e222]:
+                          - generic [ref=f56e224]:
+                            - paragraph [ref=f56e225]: Senior LabVIEW Engineer
+                            - paragraph [ref=f56e226]: Nirax · Full-time
+                          - paragraph [ref=f56e227]: Apr 2013 - Jan 2020 · 6 yrs 10 mos
+                          - paragraph [ref=f56e228]: São Paulo, Brazil · Hybrid
+                      - paragraph [ref=f56e230]:
+                        - generic [ref=f56e231]: • Designed, developed, and delivered custom LabVIEW solutions for the automotive, aerospace, and manufacturing industries.• Defined software architectures and managed the entire project lifecycle, ensuring high performance and reliability.• Developed real-time embedded systems and computer vision solutions for industrial automation.• Managed deadlines, quality, and stakeholder communication, delivering solutions aligned with client expectations.
+                      - paragraph [ref=f56e232]:
+                        - link "Desenvolvimento de software, CAN bus and +3 skills" [ref=f56e233] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/in/dpcamargo/overlay/1791957507/skill-associations-details/?associationType=position
+                  - link "Edit Senior LabVIEW Engineer at Nirax" [ref=f56e237] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/in/dpcamargo/details/experience/edit/forms/1791957507/
+                - generic [ref=f56e242]:
+                  - generic [ref=f56e245]:
+                    - link [ref=f56e246] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/company/2699054/
+                      - figure [ref=f56e247]
+                    - generic [ref=f56e248]:
+                      - link [ref=f56e249] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/experience/edit/forms/79557614/
+                        - generic [ref=f56e250]:
+                          - generic [ref=f56e252]:
+                            - paragraph [ref=f56e253]: LabVIEW Developer
+                            - paragraph [ref=f56e254]: Mentore · Full-time
+                          - paragraph [ref=f56e255]: Apr 2009 - Apr 2013 · 4 yrs 1 mo
+                          - paragraph [ref=f56e256]: São Paulo, Brazil · Hybrid
+                      - paragraph [ref=f56e258]:
+                        - generic [ref=f56e259]: • Developed automation solutions for the automated collection of laboratory equipment data at Petrobras refineries.• Designed and implemented specialized automation solutions, ensuring data accuracy and reliability.• Maintained and optimized these solutions in collaboration with Petrobras' refineries and data center.• Trained end-users to ensure effective use of the implemented solutions.
+                      - paragraph [ref=f56e260]:
+                        - link "Desenvolvimento de software, SQL and +2 skills" [ref=f56e261] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/in/dpcamargo/overlay/79557614/skill-associations-details/?associationType=position
+                  - link "Edit LabVIEW Developer at Mentore" [ref=f56e265] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/in/dpcamargo/details/experience/edit/forms/79557614/
+                - generic [ref=f56e270]:
+                  - generic [ref=f56e273]:
+                    - link [ref=f56e274] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/company/3433/
+                      - figure [ref=f56e275]
+                    - generic [ref=f56e276]:
+                      - link [ref=f56e277] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/experience/edit/forms/1791957372/
+                        - generic [ref=f56e278]:
+                          - generic [ref=f56e280]:
+                            - paragraph [ref=f56e281]: Applications Engineering Intern
+                            - paragraph [ref=f56e282]: NI (National Instruments) · Internship
+                          - paragraph [ref=f56e283]: Apr 2008 - Apr 2009 · 1 yr 1 mo
+                          - paragraph [ref=f56e284]: São Paulo, Brazil
+                      - paragraph [ref=f56e286]:
+                        - generic [ref=f56e287]: • Provided technical support for hardware and software to corporate clients, ensuring their needs were met efficiently.• Developed Proofs of Concept (POCs) and demonstrations showcasing NI solutions using LabVIEW and National Instruments hardware.• Conducted training sessions for LabVIEW Real-Time and LabVIEW FPGA courses.
+                      - paragraph [ref=f56e288]:
+                        - link "Desenvolvimento de software, CAN bus and +2 skills" [ref=f56e289] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/in/dpcamargo/overlay/1791957372/skill-associations-details/?associationType=position
+                  - link "Edit Applications Engineering Intern at NI (National Instruments)" [ref=f56e293] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/in/dpcamargo/details/experience/edit/forms/1791957372/
+            - complementary "Aside" [ref=f56e296]:
+              - generic [ref=f56e298]:
+                - generic [ref=f56e302]:
+                  - generic [ref=f56e303]:
+                    - heading "Profile language" [level=2] [ref=f56e304]
+                    - link "Edit profile language" [ref=f56e306] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/in/dpcamargo/edit/secondary-language/
+                  - generic [ref=f56e310]:
+                    - radio "English" [checked] [ref=f56e311] [cursor=pointer]:
+                      - generic [ref=f56e312]:
+                        - checkbox "English" [checked]
+                        - generic [ref=f56e313]: English
+                    - radio "Português" [ref=f56e314] [cursor=pointer]:
+                      - generic [ref=f56e315]:
+                        - checkbox "Português"
+                        - generic [ref=f56e316]: Português
+                - generic [ref=f56e321]:
+                  - generic [ref=f56e323]:
+                    - heading "Who your viewers also viewed" [level=3] [ref=f56e325]
+                    - paragraph [ref=f56e326]: Private to you
+                  - generic [ref=f56e328]:
+                    - button [ref=f56e329] [cursor=pointer]:
+                      - generic [ref=f56e330]:
+                        - figure [aria-hidden] [ref=f56e331]
+                        - generic [ref=f56e332]:
+                          - paragraph [ref=f56e335]: Software Developer at Mercado Livre Brasil
+                          - generic [ref=f56e336]:
+                            - figure [aria-hidden] [ref=f56e337]
+                            - paragraph [ref=f56e338]: Mercado Livre Brasil
+                          - button "View" [ref=f56e339]
+                    - button [ref=f56e342] [cursor=pointer]:
+                      - generic [ref=f56e343]:
+                        - figure [aria-hidden] [ref=f56e344]
+                        - generic [ref=f56e345]:
+                          - paragraph [ref=f56e348]: Someone at Ardan Labs
+                          - generic [ref=f56e349]:
+                            - figure [aria-hidden] [ref=f56e350]
+                            - paragraph [ref=f56e351]: Ardan Labs
+                          - button "View" [ref=f56e352]
+                    - button [ref=f56e355] [cursor=pointer]:
+                      - generic [ref=f56e356]:
+                        - figure [aria-hidden] [ref=f56e357]
+                        - generic [ref=f56e358]:
+                          - paragraph [ref=f56e361]: Software Developer at Luizalabs
+                          - generic [ref=f56e362]:
+                            - figure [aria-hidden] [ref=f56e363]
+                            - paragraph [ref=f56e364]: Luizalabs
+                          - button "View" [ref=f56e365]
+                    - button [ref=f56e368] [cursor=pointer]:
+                      - generic [ref=f56e369]:
+                        - figure [aria-hidden] [ref=f56e370]
+                        - generic [ref=f56e371]:
+                          - paragraph [ref=f56e374]: Someone at Villa Affetto
+                          - generic [ref=f56e375]:
+                            - figure [aria-hidden] [ref=f56e376]
+                            - paragraph [ref=f56e377]: Villa Affetto
+                          - button "View" [ref=f56e378]
+            - generic "Footer" [ref=f56e381]:
+              - generic [ref=f56e384]:
+                - generic [ref=f56e385]:
+                  - navigation [ref=f56e386]:
+                    - link [ref=f56e387] [cursor=pointer]:
+                      - /url: https://about.linkedin.com/
+                      - paragraph [ref=f56e388]: About
+                    - link [ref=f56e389] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/accessibility/
+                      - paragraph [ref=f56e390]: Accessibility
+                    - link [ref=f56e391] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/talent-solutions?trk=flagship_nav&veh=li-footer-lts-control&src=li-footer
+                      - paragraph [ref=f56e392]: Talent Solutions
+                    - link [ref=f56e393] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/legal/professional-community-policies/
+                      - paragraph [ref=f56e394]: Community Guidelines
+                    - link [ref=f56e395] [cursor=pointer]:
+                      - /url: https://careers.linkedin.com/
+                      - paragraph [ref=f56e396]: Careers
+                    - link [ref=f56e397] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/advertise?trk=n_nav_lms_f&src=li-footer
+                      - paragraph [ref=f56e398]: Marketing Solutions
+                    - button [ref=f56e399] [cursor=pointer]:
+                      - paragraph [ref=f56e401]: Privacy & Terms
+                    - link [ref=f56e403] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/help/linkedin/answer/62931/
+                      - paragraph [ref=f56e404]: Ad Choices
+                    - link [ref=f56e405] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/ad/start/?trk=n_nav_ads_rr
+                      - paragraph [ref=f56e406]: Advertising
+                    - link [ref=f56e407] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/sales-solutions?trk=flagship_nav&veh=li-footer-lss-control&src=li-footer
+                      - paragraph [ref=f56e408]: Sales Solutions
+                    - link [ref=f56e409] [cursor=pointer]:
+                      - /url: https://mobile.linkedin.com/
+                      - paragraph [ref=f56e410]: Mobile
+                    - link [ref=f56e411] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/grow?src=li-footer
+                      - paragraph [ref=f56e412]: Small Business
+                    - link [ref=f56e413] [cursor=pointer]:
+                      - /url: https://safety.linkedin.com/
+                      - paragraph [ref=f56e414]: Safety Center
+                  - paragraph [ref=f56e416]: LinkedIn Corporation © 2026
+                - generic [ref=f56e417]:
+                  - list [ref=f56e418]:
+                    - listitem [ref=f56e419]:
+                      - generic [ref=f56e422]:
+                        - link [ref=f56e423] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/help/linkedin/
+                          - paragraph [ref=f56e424]: Questions?
+                        - paragraph [ref=f56e425]: Visit our Help Center.
+                    - listitem [ref=f56e426]:
+                      - generic [ref=f56e429]:
+                        - link [ref=f56e430] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/mypreferences/d/
+                          - paragraph [ref=f56e431]: Manage your account and privacy
+                        - paragraph [ref=f56e432]: Go to your Settings.
+                    - listitem [ref=f56e433]:
+                      - generic [ref=f56e436]:
+                        - link [ref=f56e437] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/help/linkedin/answer/a1339724/
+                          - paragraph [ref=f56e438]: Recommendation transparency
+                        - paragraph [ref=f56e439]: Learn more about Recommended Content.
+                  - generic [ref=f56e441]:
+                    - paragraph [ref=f56e443]: Select language
+                    - combobox "Select language" [ref=f56e445] [cursor=pointer]:
+                      - option "العربية (Arabic)"
+                      - option "বাংলা (Bangla)"
+                      - option "Čeština (Czech)"
+                      - option "Dansk (Danish)"
+                      - option "Deutsch (German)"
+                      - option "Ελληνικά (Greek)"
+                      - option "English (English)" [selected]
+                      - option "Español (Spanish)"
+                      - option "فارسی (Persian)"
+                      - option "Suomi (Finnish)"
+                      - option "Français (French)"
+                      - option "हिंदी (Hindi)"
+                      - option "Magyar (Hungarian)"
+                      - option "Bahasa Indonesia (Indonesian)"
+                      - option "Italiano (Italian)"
+                      - option "עברית (Hebrew)"
+                      - option "日本語 (Japanese)"
+                      - option "한국어 (Korean)"
+                      - option "मराठी (Marathi)"
+                      - option "Bahasa Malaysia (Malay)"
+                      - option "Nederlands (Dutch)"
+                      - option "Norsk (Norwegian)"
+                      - option "ਪੰਜਾਬੀ (Punjabi)"
+                      - option "Polski (Polish)"
+                      - option "Português (Portuguese)"
+                      - option "Română (Romanian)"
+                      - option "Русский (Russian)"
+                      - option "Svenska (Swedish)"
+                      - option "తెలుగు (Telugu)"
+                      - option "ภาษาไทย (Thai)"
+                      - option "Tagalog (Tagalog)"
+                      - option "Türkçe (Turkish)"
+                      - option "Українська (Ukrainian)"
+                      - option "Tiếng Việt (Vietnamese)"
+                      - option "简体中文 (Chinese (Simplified))"
+                      - option "正體中文 (Chinese (Traditional))"

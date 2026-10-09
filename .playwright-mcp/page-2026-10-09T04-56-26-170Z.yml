@@ -1,0 +1,454 @@
+- generic [ref=e2]:
+  - heading "0 notifications" [level=2] [ref=e3]
+  - generic [ref=e4]:
+    - generic:
+      - generic "Skip navigation menu":
+        - button "Close jump menu" [ref=e6] [cursor=pointer]
+    - generic [ref=e9]:
+      - banner [ref=e11]:
+        - generic [ref=e14]:
+          - button [ref=e15] [cursor=pointer]
+          - generic [ref=e17]:
+            - status [ref=e18]
+            - search [ref=e19]:
+              - textbox "Search" [ref=e23]
+          - generic [ref=e25]:
+            - navigation [ref=e29]:
+              - list [ref=e30]:
+                - listitem [ref=e31]:
+                  - button "Home, 1 new notification" [ref=e32] [cursor=pointer]:
+                    - generic [ref=e36]: Home
+                - listitem [ref=e38]:
+                  - link "Network, 0 new notifications" [ref=e39] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/mynetwork
+                    - generic [ref=e43]: Network
+                - listitem [ref=e45]:
+                  - link "Jobs, 0 new notifications" [ref=e46] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/jobs/
+                    - generic [ref=e50]: Jobs
+                - listitem [ref=e52]:
+                  - link "Messaging, 0 new notifications" [ref=e53] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/messaging/
+                    - generic [ref=e57]: Messaging
+                - listitem [ref=e59]:
+                  - link "Notifications, 0 new notifications" [ref=e60] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/notifications/
+                    - generic [ref=e64]: Notifications
+                - listitem [ref=e66]:
+                  - button "Me" [ref=e67] [cursor=pointer]:
+                    - figure [aria-hidden] [ref=e69]
+            - navigation [ref=e75]:
+              - list [ref=e76]:
+                - listitem [ref=e77]:
+                  - button "For Business" [ref=e78] [cursor=pointer]
+                - listitem [ref=e85]:
+                  - link "Advertise, 0 new notifications" [ref=e86] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/campaignmanager/accounts/
+                    - generic [ref=e89]: Advertise
+      - generic [ref=e92]:
+        - toolbar [ref=e93]:
+          - link [ref=e102] [cursor=pointer]:
+            - /url: https://www.linkedin.com/in/dpcamargo/
+            - generic "Dario Pompeu de Camargo Neto" [ref=e103]:
+              - figure [aria-hidden] [ref=e104]
+              - generic [ref=e105]:
+                - paragraph [ref=e106]: Dario Pompeu de Camargo Neto
+                - paragraph [ref=e108]: Software Engineer | Applied AI Engineer | Go, Python, Java | Distributed Systems | Cloud
+        - main [ref=e109]:
+          - generic [ref=e111]:
+            - region "Primary content" [ref=e112]:
+              - generic [ref=e116]:
+                - generic [ref=e118]:
+                  - generic [ref=e119]:
+                    - generic [ref=e120]:
+                      - button "Navigate back to profile main screen" [ref=e122] [cursor=pointer]
+                      - paragraph [ref=e125]: Licenses & certifications
+                    - link "Add a certification" [ref=e127] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/in/dpcamargo/details/certifications/edit/forms/new/?profileFormEntryPoint=Detail
+                  - generic [ref=e130]:
+                    - generic [ref=e131]:
+                      - generic [ref=e134]:
+                        - link [ref=e135] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/1441/
+                          - figure [ref=e136]
+                        - generic [ref=e137]:
+                          - generic [ref=e138]:
+                            - generic [ref=e140]:
+                              - paragraph [ref=e141]: Build Infrastructure with Terraform on Google Cloud Skill Badge
+                              - paragraph [ref=e142]: Google
+                            - paragraph [ref=e143]: Issued Jan 2026
+                          - link "Show credential for Build Infrastructure with Terraform on Google Cloud Skill Badge" [ref=e144] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/safety/go/?url=https%3A%2F%2Fwww%2Ecredly%2Ecom%2Fbadges%2F1f7eae14-7a3e-4272-8462-e2c337e325d9%2Flinked_in_profile&urlhash=uNuI&mt=wVYrdN3_P4YyTIuQmElRGyTn-se7khPgrR78IN-vC2gmKfpBRuox6PTGYybhgUYu2sSD4T0o43Qb9X4rqaB8tCfv-w&isSdui=true
+                            - generic [ref=e145]: Show credential
+                          - link [ref=e148] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/899251797/skill-associations-details/?associationType=certifications
+                            - paragraph [ref=e149]:
+                              - strong [ref=e150]: "Skills:"
+                              - text: Google Cloud Platform (GCP)
+                          - link [ref=e152] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/Certifications/899251797/treasury/?profileId=ACoAAALm2f4BdnAnoi00Pzt7M8eSiouiKjRY75Q
+                            - generic [ref=e156]:
+                              - paragraph [ref=e157]: Build Infrastructure with Terraform on Google Cloud Badge
+                              - paragraph [ref=e159]: Badge
+                      - link "Edit license or certification Build Infrastructure with Terraform on Google Cloud Skill Badge" [ref=e161] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/certifications/edit/forms/899251797/
+                    - generic [ref=e164]:
+                      - generic [ref=e167]:
+                        - link [ref=e168] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/1441/
+                          - figure [ref=e169]
+                        - generic [ref=e170]:
+                          - generic [ref=e171]:
+                            - generic [ref=e173]:
+                              - paragraph [ref=e174]: Develop Your Google Cloud Network Skill Badge
+                              - paragraph [ref=e175]: Google
+                            - paragraph [ref=e176]: Issued Jan 2026
+                          - link "Show credential for Develop Your Google Cloud Network Skill Badge" [ref=e177] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/safety/go/?url=https%3A%2F%2Fwww%2Ecredly%2Ecom%2Fbadges%2F90ed48b2-72ce-4427-b8bd-cef10efaa0b7%2Flinked_in_profile&urlhash=6Cr3&mt=w2Bvgif-8v5T0CLxqjNQmUEc2PxFI9X7s_fLFnJRQU4A1EcHTknRmqY7OnILP1TH4F9gTJ6U00zT3sIMdTW7A0oHoQ&isSdui=true
+                            - generic [ref=e178]: Show credential
+                      - link "Edit license or certification Develop Your Google Cloud Network Skill Badge" [ref=e182] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/certifications/edit/forms/2077608661/
+                    - generic [ref=e185]:
+                      - generic [ref=e188]:
+                        - link [ref=e189] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/1441/
+                          - figure [ref=e190]
+                        - generic [ref=e191]:
+                          - generic [ref=e192]:
+                            - generic [ref=e194]:
+                              - paragraph [ref=e195]: Implement Load Balancing on Compute Engine Skill Badge
+                              - paragraph [ref=e196]: Google
+                            - paragraph [ref=e197]: Issued Dec 2025
+                          - link "Show credential for Implement Load Balancing on Compute Engine Skill Badge" [ref=e198] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/safety/go/?url=https%3A%2F%2Fwww%2Ecredly%2Ecom%2Fbadges%2F89fcfe96-798d-406b-9e84-c2f391ca7dc9%2Flinked_in_profile&urlhash=3Y1x&mt=QpWcVg6Kf2U-IKsz1YKw45lnpAdgScvNV8TOHsEGzaInU8AhHFPG3CxeyjG9SjF_CrbOlAQTJqU6fVMYepc9HGJzyA&isSdui=true
+                            - generic [ref=e199]: Show credential
+                          - link [ref=e202] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/1753115625/skill-associations-details/?associationType=certifications
+                            - paragraph [ref=e203]:
+                              - strong [ref=e204]: "Skills:"
+                              - text: Google Cloud Platform (GCP)
+                          - link [ref=e206] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/Certifications/1753115625/treasury/?profileId=ACoAAALm2f4BdnAnoi00Pzt7M8eSiouiKjRY75Q
+                            - generic [ref=e210]:
+                              - paragraph [ref=e211]: Badge
+                              - paragraph [ref=e213]: Load Balancing on Compute Engine Badge
+                      - link "Edit license or certification Implement Load Balancing on Compute Engine Skill Badge" [ref=e215] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/certifications/edit/forms/1753115625/
+                    - generic [ref=e218]:
+                      - generic [ref=e221]:
+                        - link [ref=e222] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/1441/
+                          - figure [ref=e223]
+                        - generic [ref=e224]:
+                          - generic [ref=e225]:
+                            - generic [ref=e227]:
+                              - paragraph [ref=e228]: Google Cloud Computing Foundations Certificate
+                              - paragraph [ref=e229]: Google
+                            - paragraph [ref=e230]: Issued Nov 2025
+                            - paragraph [ref=e231]: Credential ID 91d99e10-34ca-47a6-ad33-c4364ae6bac4
+                          - link "Show credential for Google Cloud Computing Foundations Certificate" [ref=e232] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/safety/go/?url=https%3A%2F%2Fwww%2Ecredly%2Ecom%2Fbadges%2F91d99e10-34ca-47a6-ad33-c4364ae6bac4%2Fpublic_url&urlhash=43N_&mt=TR-CdXHMdJlSrPGlssC6nNQ9JOwmTrNADGthQTgmulcXNDP8lFD74pGiCwXn7ysEkdPQUbX1yiPI1HltLOq6GMY6vw&isSdui=true
+                            - generic [ref=e233]: Show credential
+                          - link [ref=e236] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/1284218767/skill-associations-details/?associationType=certifications
+                            - paragraph [ref=e237]:
+                              - strong [ref=e238]: "Skills:"
+                              - text: Cloud Computing, GCP Core Services, +3 skills
+                          - link [ref=e240] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/Certifications/1284218767/treasury/?profileId=ACoAAALm2f4BdnAnoi00Pzt7M8eSiouiKjRY75Q
+                            - paragraph [ref=e245]: Google Cloud Computing Foundations Certificate Badge
+                      - link "Edit license or certification Google Cloud Computing Foundations Certificate" [ref=e247] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/certifications/edit/forms/1284218767/
+                    - generic [ref=e250]:
+                      - generic [ref=e253]:
+                        - link [ref=e254] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/208777/
+                          - figure [ref=e255]
+                        - generic [ref=e256]:
+                          - generic [ref=e257]:
+                            - generic [ref=e259]:
+                              - paragraph [ref=e260]: FinOps Certified Practitioner
+                              - paragraph [ref=e261]: The Linux Foundation
+                            - paragraph [ref=e262]: Issued Dec 2024 · Expires Dec 2026
+                          - link "Show credential for FinOps Certified Practitioner" [ref=e263] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/safety/go/?url=https%3A%2F%2Fwww%2Ecredly%2Ecom%2Fbadges%2F1b3dac23-998f-4d76-beeb-7e42431b58b2&urlhash=Gq77&mt=bJBhg7EvuLwVn72hn0OULyQUCIIw2un9iz81EN1fRBFP2RTcgnASme6wNtTcGOtvE3Kq5RY5jJ51BC3BmzxMRwghfQ&isSdui=true
+                            - generic [ref=e264]: Show credential
+                          - link [ref=e267] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/348595723/skill-associations-details/?associationType=certifications
+                            - paragraph [ref=e268]:
+                              - strong [ref=e269]: "Skills:"
+                              - text: FinOps, Cloud Financial Management
+                          - link [ref=e271] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/Certifications/348595723/treasury/?profileId=ACoAAALm2f4BdnAnoi00Pzt7M8eSiouiKjRY75Q
+                            - generic [ref=e275]:
+                              - paragraph [ref=e276]: FinOps Certified Practitioner was issued by The Linux Foundation to Dario Pompeu de Camargo Neto.
+                              - paragraph [ref=e278]: FInOps Badge
+                      - link "Edit license or certification FinOps Certified Practitioner" [ref=e280] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/certifications/edit/forms/348595723/
+                    - generic [ref=e283]:
+                      - generic [ref=e286]:
+                        - link [ref=e287] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/school/74989661/
+                          - figure [ref=e288]
+                        - generic [ref=e289]:
+                          - generic [ref=e290]:
+                            - generic [ref=e292]:
+                              - paragraph [ref=e293]: Go Expert
+                              - paragraph [ref=e294]: Full Cycle
+                            - paragraph [ref=e295]: Issued Oct 2024
+                            - paragraph [ref=e296]: Credential ID d8dd77f6-a0f6-4306-8340-16dcaba0e9c4
+                          - link "Show credential for Go Expert" [ref=e297] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/safety/go/?url=https%3A%2F%2Ffullcycle%2Ecom%2Ebr%2Fcertificado%2Fd8dd77f6-a0f6-4306-8340-16dcaba0e9c4&urlhash=qP5A&mt=9HJ0K7xefG_qhPueNu_SMabVUYBe02ALsWv_gIMs2hpGOYgMdWQoVhMhs3QEtql4OxlZIU34csQsmPQgh5umx6nwPQ&isSdui=true
+                            - generic [ref=e298]: Show credential
+                          - link [ref=e301] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/1431710373/skill-associations-details/?associationType=certifications
+                            - paragraph [ref=e302]:
+                              - strong [ref=e303]: "Skills:"
+                              - text: API REST, Message Queue, +16 skills
+                      - link "Edit license or certification Go Expert" [ref=e305] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/certifications/edit/forms/1431710373/
+                    - generic [ref=e308]:
+                      - generic [ref=e311]:
+                        - link [ref=e312] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/35612417/
+                          - figure [ref=e313]
+                        - generic [ref=e314]:
+                          - generic [ref=e315]:
+                            - generic [ref=e317]:
+                              - paragraph [ref=e318]: FinOps Personas - Engineer Training
+                              - paragraph [ref=e319]: FinOps Foundation
+                            - paragraph [ref=e320]: Issued Nov 2023 · Expired Nov 2025
+                            - paragraph [ref=e321]: Credential ID 4ae83crvexve
+                          - link "Show credential for FinOps Personas - Engineer Training" [ref=e322] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/safety/go/?url=https%3A%2F%2Fverify%2Eskilljar%2Ecom%2Fc%2F4ae83crvexve&urlhash=l2fy&mt=nF4Q-Ppa64p5fwuw3f6QchysSNc123XN-2Zl3bi5uyN4efK7Ty-v5Zd_QNZWgr9FYxU67EO7iqMLLs4K4Cgqzpercg&isSdui=true
+                            - generic [ref=e323]: Show credential
+                          - link [ref=e326] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/397019862/skill-associations-details/?associationType=certifications
+                            - paragraph [ref=e327]:
+                              - strong [ref=e328]: "Skills:"
+                              - text: Cloud Computing, FinOps, +1 skill
+                          - link [ref=e330] [cursor=pointer]:
+                            - /url: https://verify.skilljar.com/c/4ae83crvexve
+                            - paragraph [ref=e337]: Certificate for FinOps Personas - Engineer Training
+                      - link "Edit license or certification FinOps Personas - Engineer Training" [ref=e339] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/certifications/edit/forms/397019862/
+                    - generic [ref=e342]:
+                      - generic [ref=e345]:
+                        - link [ref=e346] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/1028/
+                          - figure [ref=e347]
+                        - generic [ref=e348]:
+                          - generic [ref=e349]:
+                            - generic [ref=e351]:
+                              - paragraph [ref=e352]: Oracle Cloud Infrastructure AI Certified Foundations Associate
+                              - paragraph [ref=e353]: Oracle
+                            - paragraph [ref=e354]: Issued Oct 2023 · Expired Oct 2025
+                            - paragraph [ref=e355]: Credential ID 305367321OCI23AIFCA
+                          - link [ref=e356] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/1778617261/skill-associations-details/?associationType=certifications
+                            - paragraph [ref=e357]:
+                              - strong [ref=e358]: "Skills:"
+                              - text: AI fundamental concepts, Oracle AI services, +3 skills
+                          - link [ref=e360] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/Certifications/1778617261/treasury/?profileId=ACoAAALm2f4BdnAnoi00Pzt7M8eSiouiKjRY75Q
+                            - generic [ref=e364]:
+                              - paragraph [ref=e365]: 2023-10 OCI AI Foundations Associate.pdf
+                              - paragraph [ref=e367]:
+                                - generic [ref=e368]: Oracle AI servicesOracle ML servicesAI fundamental conceptsMachine Learning and Deep Learning concepts and terminologiesOracle Generative AI
+                      - link "Edit license or certification Oracle Cloud Infrastructure AI Certified Foundations Associate" [ref=e371] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/certifications/edit/forms/1778617261/
+                    - generic [ref=e374]:
+                      - generic [ref=e377]:
+                        - link [ref=e378] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/1028/
+                          - figure [ref=e379]
+                        - generic [ref=e380]:
+                          - generic [ref=e381]:
+                            - generic [ref=e383]:
+                              - paragraph [ref=e384]: Oracle Cloud Infrastructure Certified Architect Associate
+                              - paragraph [ref=e385]: Oracle
+                            - paragraph [ref=e386]: Issued Oct 2023 · Expires Oct 2026
+                            - paragraph [ref=e387]: Credential ID 305367321OCI2023CAA
+                          - link "Show credential for Oracle Cloud Infrastructure Certified Architect Associate" [ref=e388] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/safety/go/?url=https%3A%2F%2Fcatalog-education%2Eoracle%2Ecom%2Fpls%2Fcertview%2Fsharebadge%3Fid%3DF4B7F8A9A915660CB67016C0E8F474FA87BFE8CCDB211D706C635ACD5D56B2BE&urlhash=MHDe&mt=WrAD7RqfiRHmLBz3ggYEc6vKSGl3duvNwXfwoYZ-D2noGwPB64KLQm2Rs7iCjpIzIYCT4YVKmpTJ0dXioX6gf8j44w&isSdui=true
+                            - generic [ref=e389]: Show credential
+                          - link [ref=e392] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/689877106/skill-associations-details/?associationType=certifications
+                            - paragraph [ref=e393]:
+                              - strong [ref=e394]: "Skills:"
+                              - text: Cloud Computing, OCI, +1 skill
+                          - link [ref=e396] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/Certifications/689877106/treasury/?profileId=ACoAAALm2f4BdnAnoi00Pzt7M8eSiouiKjRY75Q
+                            - paragraph [ref=e401]: 2023-10 OCI Architect Associate.pdf
+                      - link "Edit license or certification Oracle Cloud Infrastructure Certified Architect Associate" [ref=e403] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/certifications/edit/forms/689877106/
+                    - generic [ref=e406]:
+                      - generic [ref=e409]:
+                        - link [ref=e410] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/company/1028/
+                          - figure [ref=e411]
+                        - generic [ref=e412]:
+                          - generic [ref=e413]:
+                            - generic [ref=e415]:
+                              - paragraph [ref=e416]: Oracle Cloud Infrastructure 2023 Certified Foundations Associate
+                              - paragraph [ref=e417]: Oracle
+                            - paragraph [ref=e418]: Issued Sep 2023 · Expired Sep 2025
+                            - paragraph [ref=e419]: Credential ID 305367321OCIF2023CA
+                          - link "Show credential for Oracle Cloud Infrastructure 2023 Certified Foundations Associate" [ref=e420] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/safety/go/?url=https%3A%2F%2Fcatalog-education%2Eoracle%2Ecom%2Fpls%2Fcertview%2Fsharebadge%3Fid%3D4FC625B82A29C41B104906B8A3A8815C70E8311607822B7991EAE65232711576&urlhash=RWau&mt=kbs8nGRBaBLPx7i4x5BcWDUex1Rcjge4aCHpeWHEcDVDpQS2YgREuqm2hEDBhv1CR9l9RXiApo1tsHOmDN6SHtom3g&isSdui=true
+                            - generic [ref=e421]: Show credential
+                          - link [ref=e424] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/1372569610/skill-associations-details/?associationType=certifications
+                            - paragraph [ref=e425]:
+                              - strong [ref=e426]: "Skills:"
+                              - text: Cloud Computing, OCI, +1 skill
+                          - link [ref=e428] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/Certifications/1372569610/treasury/?profileId=ACoAAALm2f4BdnAnoi00Pzt7M8eSiouiKjRY75Q
+                            - paragraph [ref=e433]: 2023-09 OCI Foundations.pdf
+                      - link "Edit license or certification Oracle Cloud Infrastructure 2023 Certified Foundations Associate" [ref=e435] [cursor=pointer]:
+                        - /url: https://www.linkedin.com/in/dpcamargo/details/certifications/edit/forms/1372569610/
+                - progressbar "In progress" [ref=e441]
+            - complementary "Aside" [ref=e442]:
+              - generic [ref=e449]:
+                - generic [ref=e451]:
+                  - heading "Who your viewers also viewed" [level=3] [ref=e453]
+                  - paragraph [ref=e454]: Private to you
+                - generic [ref=e456]:
+                  - button [ref=e457] [cursor=pointer]:
+                    - generic [ref=e458]:
+                      - figure [aria-hidden] [ref=e459]
+                      - generic [ref=e460]:
+                        - paragraph [ref=e463]: Software Developer at Mercado Livre Brasil
+                        - generic [ref=e464]:
+                          - figure [aria-hidden] [ref=e465]
+                          - paragraph [ref=e466]: Mercado Livre Brasil
+                        - button "View" [ref=e467]
+                  - button [ref=e470] [cursor=pointer]:
+                    - generic [ref=e471]:
+                      - figure [aria-hidden] [ref=e472]
+                      - generic [ref=e473]:
+                        - paragraph [ref=e476]: Someone at Ardan Labs
+                        - generic [ref=e477]:
+                          - figure [aria-hidden] [ref=e478]
+                          - paragraph [ref=e479]: Ardan Labs
+                        - button "View" [ref=e480]
+                  - button [ref=e483] [cursor=pointer]:
+                    - generic [ref=e484]:
+                      - figure [aria-hidden] [ref=e485]
+                      - generic [ref=e486]:
+                        - paragraph [ref=e489]: Software Developer at Luizalabs
+                        - generic [ref=e490]:
+                          - figure [aria-hidden] [ref=e491]
+                          - paragraph [ref=e492]: Luizalabs
+                        - button "View" [ref=e493]
+                  - button [ref=e496] [cursor=pointer]:
+                    - generic [ref=e497]:
+                      - figure [aria-hidden] [ref=e498]
+                      - generic [ref=e499]:
+                        - paragraph [ref=e502]: Someone at Villa Affetto
+                        - generic [ref=e503]:
+                          - figure [aria-hidden] [ref=e504]
+                          - paragraph [ref=e505]: Villa Affetto
+                        - button "View" [ref=e506]
+            - generic "Footer" [ref=e509]:
+              - generic [ref=e512]:
+                - generic [ref=e513]:
+                  - navigation [ref=e514]:
+                    - link [ref=e515] [cursor=pointer]:
+                      - /url: https://about.linkedin.com/
+                      - paragraph [ref=e516]: About
+                    - link [ref=e517] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/accessibility/
+                      - paragraph [ref=e518]: Accessibility
+                    - link [ref=e519] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/talent-solutions?trk=flagship_nav&veh=li-footer-lts-control&src=li-footer
+                      - paragraph [ref=e520]: Talent Solutions
+                    - link [ref=e521] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/legal/professional-community-policies/
+                      - paragraph [ref=e522]: Community Guidelines
+                    - link [ref=e523] [cursor=pointer]:
+                      - /url: https://careers.linkedin.com/
+                      - paragraph [ref=e524]: Careers
+                    - link [ref=e525] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/advertise?trk=n_nav_lms_f&src=li-footer
+                      - paragraph [ref=e526]: Marketing Solutions
+                    - button [ref=e527] [cursor=pointer]:
+                      - paragraph [ref=e529]: Privacy & Terms
+                    - link [ref=e531] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/help/linkedin/answer/62931/
+                      - paragraph [ref=e532]: Ad Choices
+                    - link [ref=e533] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/ad/start/?trk=n_nav_ads_rr
+                      - paragraph [ref=e534]: Advertising
+                    - link [ref=e535] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/sales-solutions?trk=flagship_nav&veh=li-footer-lss-control&src=li-footer
+                      - paragraph [ref=e536]: Sales Solutions
+                    - link [ref=e537] [cursor=pointer]:
+                      - /url: https://mobile.linkedin.com/
+                      - paragraph [ref=e538]: Mobile
+                    - link [ref=e539] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/grow?src=li-footer
+                      - paragraph [ref=e540]: Small Business
+                    - link [ref=e541] [cursor=pointer]:
+                      - /url: https://safety.linkedin.com/
+                      - paragraph [ref=e542]: Safety Center
+                  - paragraph [ref=e544]: LinkedIn Corporation © 2026
+                - generic [ref=e545]:
+                  - list [ref=e546]:
+                    - listitem [ref=e547]:
+                      - generic [ref=e550]:
+                        - link [ref=e551] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/help/linkedin/
+                          - paragraph [ref=e552]: Questions?
+                        - paragraph [ref=e553]: Visit our Help Center.
+                    - listitem [ref=e554]:
+                      - generic [ref=e557]:
+                        - link [ref=e558] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/mypreferences/d/
+                          - paragraph [ref=e559]: Manage your account and privacy
+                        - paragraph [ref=e560]: Go to your Settings.
+                    - listitem [ref=e561]:
+                      - generic [ref=e564]:
+                        - link [ref=e565] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/help/linkedin/answer/a1339724/
+                          - paragraph [ref=e566]: Recommendation transparency
+                        - paragraph [ref=e567]: Learn more about Recommended Content.
+                  - generic [ref=e569]:
+                    - paragraph [ref=e571]: Select language
+                    - combobox "Select language" [ref=e573] [cursor=pointer]:
+                      - option "العربية (Arabic)"
+                      - option "বাংলা (Bangla)"
+                      - option "Čeština (Czech)"
+                      - option "Dansk (Danish)"
+                      - option "Deutsch (German)"
+                      - option "Ελληνικά (Greek)"
+                      - option "English (English)" [selected]
+                      - option "Español (Spanish)"
+                      - option "فارسی (Persian)"
+                      - option "Suomi (Finnish)"
+                      - option "Français (French)"
+                      - option "हिंदी (Hindi)"
+                      - option "Magyar (Hungarian)"
+                      - option "Bahasa Indonesia (Indonesian)"
+                      - option "Italiano (Italian)"
+                      - option "עברית (Hebrew)"
+                      - option "日本語 (Japanese)"
+                      - option "한국어 (Korean)"
+                      - option "मराठी (Marathi)"
+                      - option "Bahasa Malaysia (Malay)"
+                      - option "Nederlands (Dutch)"
+                      - option "Norsk (Norwegian)"
+                      - option "ਪੰਜਾਬੀ (Punjabi)"
+                      - option "Polski (Polish)"
+                      - option "Português (Portuguese)"
+                      - option "Română (Romanian)"
+                      - option "Русский (Russian)"
+                      - option "Svenska (Swedish)"
+                      - option "తెలుగు (Telugu)"
+                      - option "ภาษาไทย (Thai)"
+                      - option "Tagalog (Tagalog)"
+                      - option "Türkçe (Turkish)"
+                      - option "Українська (Ukrainian)"
+                      - option "Tiếng Việt (Vietnamese)"
+                      - option "简体中文 (Chinese (Simplified))"
+                      - option "正體中文 (Chinese (Traditional))"

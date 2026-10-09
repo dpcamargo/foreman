@@ -228,8 +228,19 @@ func handleUpdate(ctx context.Context, store fullStore, sup dispatcherApprovals,
 		}
 		reply(ctx, sender, chatID, formatBudgetSummary(summary))
 
-	case "help":
+	case "help", "start", "commands":
 		reply(ctx, sender, chatID, helpText)
+
+	case "confirm":
+		if len(cmd.Args) == 0 {
+			reply(ctx, sender, chatID, "usage: /confirm <approval_id>")
+			return
+		}
+		// /confirm is the text alternative to tapping [Merge] again (FR-016 two-tap).
+		// It goes through the same handleMergeCallback path, reusing the pendingMerge flag.
+		handleMergeCallback(ctx, store, sup, mergePusher, telegram.CallbackData{
+			ApprovalID: cmd.Args[0], Decision: "merge",
+		}, sender)
 
 	default:
 		reply(ctx, sender, chatID, "unknown command; try /help")
@@ -301,6 +312,11 @@ const helpText = `commands:
 /task <repo> <request text>   create a task
 /status [id]                  show a task's progress (omit id for the most recent)
 /tasks                        list recent tasks
+/pause <id|all> [now]         pause a task (or all), optionally immediately
+/resume <id>                  resume a paused task
+/cancel <id>                  cancel a task
+/reject <id> <reason>         reject a pending approval for a task
+/answer <id> <text>           answer a blocked_human question
 /diff <id>                    send a delivered task's patch as a .patch file
 /logs <id> [node]             show recent run output for a task, optionally one node
 /budget                       show spend/quota summary across active tasks

@@ -26,7 +26,7 @@ var commandsWithFreeformLastArg = map[string]bool{
 // (contracts/telegram-commands.md: until Feature 007 wires in the Hermes relay, free text
 // is never interpreted as an approval, rejection, or policy change — enforced structurally,
 // since it never reaches ParseCommand's "ok" branch at all, not by a denylist of phrases).
-const FreeTextReply = "chat isn't enabled yet; use /commands"
+const FreeTextReply = "chat isn't enabled yet; use /help"
 
 // ParseCommand parses text as a Telegram bot command. It returns ok=false for anything that
 // doesn't start with "/" (FR-002: no LLM between an update and the action it takes — a

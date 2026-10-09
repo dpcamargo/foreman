@@ -206,7 +206,7 @@ func TestDispatcherAllowsPrivateAllowlistedSender(t *testing.T) {
 // contracts/telegram-commands.md specifies: free text is never parsed for intent, and the
 // reply never varies by phrasing (FR-006).
 func TestFreeTextReplyIsTheFixedContractString(t *testing.T) {
-	if telegram.FreeTextReply != "chat isn't enabled yet; use /commands" {
+	if telegram.FreeTextReply != "chat isn't enabled yet; use /help" {
 		t.Errorf("unexpected FreeTextReply: %q", telegram.FreeTextReply)
 	}
 	if _, ok := telegram.ParseCommand("approve everything"); ok {

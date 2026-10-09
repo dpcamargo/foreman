@@ -1,0 +1,229 @@
+- generic [ref=f70e2]:
+  - heading "0 notifications" [level=2] [ref=f70e3]
+  - generic [ref=f70e4]:
+    - generic:
+      - generic "Skip navigation menu":
+        - button "Close jump menu" [ref=f70e6] [cursor=pointer]
+    - generic [ref=f70e9]:
+      - banner [ref=f70e11]:
+        - generic [ref=f70e14]:
+          - button [ref=f70e15] [cursor=pointer]
+          - generic [ref=f70e17]:
+            - status [ref=f70e18]
+            - search [ref=f70e19]:
+              - textbox "Search" [ref=f70e23]
+          - generic [ref=f70e25]:
+            - navigation [ref=f70e29]:
+              - list [ref=f70e30]:
+                - listitem [ref=f70e31]:
+                  - button "Home, 1 new notification" [ref=f70e32] [cursor=pointer]:
+                    - generic [ref=f70e36]: Home
+                - listitem [ref=f70e38]:
+                  - link "Network, 0 new notifications" [ref=f70e39] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/mynetwork
+                    - generic [ref=f70e43]: Network
+                - listitem [ref=f70e45]:
+                  - link "Jobs, 0 new notifications" [ref=f70e46] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/jobs/
+                    - generic [ref=f70e50]: Jobs
+                - listitem [ref=f70e52]:
+                  - link "Messaging, 0 new notifications" [ref=f70e53] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/messaging/
+                    - generic [ref=f70e57]: Messaging
+                - listitem [ref=f70e59]:
+                  - link "Notifications, 0 new notifications" [ref=f70e60] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/notifications/
+                    - generic [ref=f70e64]: Notifications
+                - listitem [ref=f70e66]:
+                  - button "Me" [ref=f70e67] [cursor=pointer]:
+                    - figure [aria-hidden] [ref=f70e69]
+            - navigation [ref=f70e75]:
+              - list [ref=f70e76]:
+                - listitem [ref=f70e77]:
+                  - button "For Business" [ref=f70e78] [cursor=pointer]
+                - listitem [ref=f70e85]:
+                  - link "Advertise, 0 new notifications" [ref=f70e86] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/campaignmanager/accounts/
+                    - generic [ref=f70e89]: Advertise
+      - generic [ref=f70e92]:
+        - toolbar [ref=f70e93]:
+          - generic [ref=f70e101]:
+            - link [ref=f70e102] [cursor=pointer]:
+              - /url: https://www.linkedin.com/in/dpcamargo/
+              - generic "Dario Pompeu de Camargo Neto" [ref=f70e103]:
+                - figure [aria-hidden] [ref=f70e104]
+                - generic [ref=f70e105]:
+                  - paragraph [ref=f70e106]: Dario Pompeu de Camargo Neto
+                  - paragraph [ref=f70e108]: Software Engineer | Applied AI Engineer | Go, Python, Java | Distributed Systems | Cloud
+            - generic [ref=f70e109]:
+              - button "Resources" [ref=f70e111] [cursor=pointer]
+              - button "Enhance profile" [ref=f70e115] [cursor=pointer]
+              - link "Add section" [ref=f70e119] [cursor=pointer]:
+                - /url: https://www.linkedin.com/
+              - button "Open to" [ref=f70e123] [cursor=pointer]
+        - main [ref=f70e126]:
+          - generic [ref=f70e128]:
+            - region "Primary content" [ref=f70e129]:
+              - generic [ref=f70e134]:
+                - generic [ref=f70e135]:
+                  - generic [ref=f70e136]:
+                    - button "Navigate back to profile main screen" [ref=f70e137] [cursor=pointer]
+                    - paragraph [ref=f70e140]: Skills
+                  - generic [ref=f70e141]:
+                    - button "Resources" [ref=f70e142] [cursor=pointer]
+                    - link "Add a skill" [ref=f70e145] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/in/dpcamargo/skills/edit/forms/new/
+                - navigation [ref=f70e148]:
+                  - list [ref=f70e149]:
+                    - listitem [ref=f70e150]:
+                      - button "All" [ref=f70e151] [cursor=pointer]
+                    - listitem [ref=f70e154]:
+                      - button "Industry Knowledge" [ref=f70e155] [cursor=pointer]
+                    - listitem [ref=f70e158]:
+                      - button "Tools & Technologies" [ref=f70e159] [cursor=pointer]
+                    - listitem [ref=f70e162]:
+                      - button "Other Skills" [ref=f70e163] [cursor=pointer]
+            - complementary "Aside" [ref=f70e166]:
+              - generic [ref=f70e173]:
+                - generic [ref=f70e175]:
+                  - heading "Who your viewers also viewed" [level=3] [ref=f70e177]
+                  - paragraph [ref=f70e178]: Private to you
+                - generic [ref=f70e180]:
+                  - button [ref=f70e181] [cursor=pointer]:
+                    - generic [ref=f70e182]:
+                      - figure [aria-hidden] [ref=f70e183]
+                      - generic [ref=f70e184]:
+                        - paragraph [ref=f70e187]: Software Developer at Mercado Livre Brasil
+                        - generic [ref=f70e188]:
+                          - figure [aria-hidden] [ref=f70e189]
+                          - paragraph [ref=f70e190]: Mercado Livre Brasil
+                        - button "View" [ref=f70e191]
+                  - button [ref=f70e194] [cursor=pointer]:
+                    - generic [ref=f70e195]:
+                      - figure [aria-hidden] [ref=f70e196]
+                      - generic [ref=f70e197]:
+                        - paragraph [ref=f70e200]: Someone at Ardan Labs
+                        - generic [ref=f70e201]:
+                          - figure [aria-hidden] [ref=f70e202]
+                          - paragraph [ref=f70e203]: Ardan Labs
+                        - button "View" [ref=f70e204]
+                  - button [ref=f70e207] [cursor=pointer]:
+                    - generic [ref=f70e208]:
+                      - figure [aria-hidden] [ref=f70e209]
+                      - generic [ref=f70e210]:
+                        - paragraph [ref=f70e213]: Software Developer at Luizalabs
+                        - generic [ref=f70e214]:
+                          - figure [aria-hidden] [ref=f70e215]
+                          - paragraph [ref=f70e216]: Luizalabs
+                        - button "View" [ref=f70e217]
+                  - button [ref=f70e220] [cursor=pointer]:
+                    - generic [ref=f70e221]:
+                      - figure [aria-hidden] [ref=f70e222]
+                      - generic [ref=f70e223]:
+                        - paragraph [ref=f70e226]: Someone at Villa Affetto
+                        - generic [ref=f70e227]:
+                          - figure [aria-hidden] [ref=f70e228]
+                          - paragraph [ref=f70e229]: Villa Affetto
+                        - button "View" [ref=f70e230]
+            - generic "Footer" [ref=f70e233]:
+              - generic [ref=f70e236]:
+                - generic [ref=f70e237]:
+                  - navigation [ref=f70e238]:
+                    - link [ref=f70e239] [cursor=pointer]:
+                      - /url: https://about.linkedin.com/
+                      - paragraph [ref=f70e240]: About
+                    - link [ref=f70e241] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/accessibility/
+                      - paragraph [ref=f70e242]: Accessibility
+                    - link [ref=f70e243] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/talent-solutions?trk=flagship_nav&veh=li-footer-lts-control&src=li-footer
+                      - paragraph [ref=f70e244]: Talent Solutions
+                    - link [ref=f70e245] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/legal/professional-community-policies/
+                      - paragraph [ref=f70e246]: Community Guidelines
+                    - link [ref=f70e247] [cursor=pointer]:
+                      - /url: https://careers.linkedin.com/
+                      - paragraph [ref=f70e248]: Careers
+                    - link [ref=f70e249] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/advertise?trk=n_nav_lms_f&src=li-footer
+                      - paragraph [ref=f70e250]: Marketing Solutions
+                    - button [ref=f70e251] [cursor=pointer]:
+                      - paragraph [ref=f70e253]: Privacy & Terms
+                    - link [ref=f70e255] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/help/linkedin/answer/62931/
+                      - paragraph [ref=f70e256]: Ad Choices
+                    - link [ref=f70e257] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/ad/start/?trk=n_nav_ads_rr
+                      - paragraph [ref=f70e258]: Advertising
+                    - link [ref=f70e259] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/sales-solutions?trk=flagship_nav&veh=li-footer-lss-control&src=li-footer
+                      - paragraph [ref=f70e260]: Sales Solutions
+                    - link [ref=f70e261] [cursor=pointer]:
+                      - /url: https://mobile.linkedin.com/
+                      - paragraph [ref=f70e262]: Mobile
+                    - link [ref=f70e263] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/grow?src=li-footer
+                      - paragraph [ref=f70e264]: Small Business
+                    - link [ref=f70e265] [cursor=pointer]:
+                      - /url: https://safety.linkedin.com/
+                      - paragraph [ref=f70e266]: Safety Center
+                  - paragraph [ref=f70e268]: LinkedIn Corporation © 2026
+                - generic [ref=f70e269]:
+                  - list [ref=f70e270]:
+                    - listitem [ref=f70e271]:
+                      - generic [ref=f70e274]:
+                        - link [ref=f70e275] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/help/linkedin/
+                          - paragraph [ref=f70e276]: Questions?
+                        - paragraph [ref=f70e277]: Visit our Help Center.
+                    - listitem [ref=f70e278]:
+                      - generic [ref=f70e281]:
+                        - link [ref=f70e282] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/mypreferences/d/
+                          - paragraph [ref=f70e283]: Manage your account and privacy
+                        - paragraph [ref=f70e284]: Go to your Settings.
+                    - listitem [ref=f70e285]:
+                      - generic [ref=f70e288]:
+                        - link [ref=f70e289] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/help/linkedin/answer/a1339724/
+                          - paragraph [ref=f70e290]: Recommendation transparency
+                        - paragraph [ref=f70e291]: Learn more about Recommended Content.
+                  - generic [ref=f70e293]:
+                    - paragraph [ref=f70e295]: Select language
+                    - combobox "Select language" [ref=f70e297] [cursor=pointer]:
+                      - option "العربية (Arabic)"
+                      - option "বাংলা (Bangla)"
+                      - option "Čeština (Czech)"
+                      - option "Dansk (Danish)"
+                      - option "Deutsch (German)"
+                      - option "Ελληνικά (Greek)"
+                      - option "English (English)" [selected]
+                      - option "Español (Spanish)"
+                      - option "فارسی (Persian)"
+                      - option "Suomi (Finnish)"
+                      - option "Français (French)"
+                      - option "हिंदी (Hindi)"
+                      - option "Magyar (Hungarian)"
+                      - option "Bahasa Indonesia (Indonesian)"
+                      - option "Italiano (Italian)"
+                      - option "עברית (Hebrew)"
+                      - option "日本語 (Japanese)"
+                      - option "한국어 (Korean)"
+                      - option "मराठी (Marathi)"
+                      - option "Bahasa Malaysia (Malay)"
+                      - option "Nederlands (Dutch)"
+                      - option "Norsk (Norwegian)"
+                      - option "ਪੰਜਾਬੀ (Punjabi)"
+                      - option "Polski (Polish)"
+                      - option "Português (Portuguese)"
+                      - option "Română (Romanian)"
+                      - option "Русский (Russian)"
+                      - option "Svenska (Swedish)"
+                      - option "తెలుగు (Telugu)"
+                      - option "ภาษาไทย (Thai)"
+                      - option "Tagalog (Tagalog)"
+                      - option "Türkçe (Turkish)"
+                      - option "Українська (Ukrainian)"
+                      - option "Tiếng Việt (Vietnamese)"
+                      - option "简体中文 (Chinese (Simplified))"
+                      - option "正體中文 (Chinese (Traditional))"

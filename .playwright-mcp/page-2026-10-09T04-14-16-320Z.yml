@@ -1,0 +1,266 @@
+- generic [ref=f114e2]:
+  - heading "0 notifications" [level=2] [ref=f114e3]
+  - generic [ref=f114e4]:
+    - generic:
+      - generic "Skip navigation menu":
+        - button "Close jump menu" [ref=f114e6] [cursor=pointer]
+    - generic [ref=f114e9]:
+      - banner [ref=f114e11]:
+        - generic [ref=f114e14]:
+          - button [ref=f114e15] [cursor=pointer]
+          - generic [ref=f114e17]:
+            - status [ref=f114e18]
+            - search [ref=f114e19]:
+              - textbox "Search" [ref=f114e23]
+          - generic [ref=f114e25]:
+            - navigation [ref=f114e29]:
+              - list [ref=f114e30]:
+                - listitem [ref=f114e31]:
+                  - button "Home, 1 new notification" [ref=f114e32] [cursor=pointer]:
+                    - generic [ref=f114e36]: Home
+                - listitem [ref=f114e38]:
+                  - link "Network, 0 new notifications" [ref=f114e39] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/mynetwork
+                    - generic [ref=f114e43]: Network
+                - listitem [ref=f114e45]:
+                  - link "Jobs, 0 new notifications" [ref=f114e46] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/jobs/
+                    - generic [ref=f114e50]: Jobs
+                - listitem [ref=f114e52]:
+                  - link "Messaging, 0 new notifications" [ref=f114e53] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/messaging/
+                    - generic [ref=f114e57]: Messaging
+                - listitem [ref=f114e59]:
+                  - link "Notifications, 0 new notifications" [ref=f114e60] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/notifications/
+                    - generic [ref=f114e64]: Notifications
+                - listitem [ref=f114e66]:
+                  - button "Me" [ref=f114e67] [cursor=pointer]:
+                    - figure [aria-hidden] [ref=f114e69]
+            - navigation [ref=f114e75]:
+              - list [ref=f114e76]:
+                - listitem [ref=f114e77]:
+                  - button "For Business" [ref=f114e78] [cursor=pointer]
+                - listitem [ref=f114e85]:
+                  - link "Advertise, 0 new notifications" [ref=f114e86] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/campaignmanager/accounts/
+                    - generic [ref=f114e89]: Advertise
+      - generic [ref=f114e92]:
+        - toolbar [aria-hidden] [ref=f114e93]:
+          - generic [ref=f114e97]:
+            - link [ref=f114e98] [cursor=pointer]:
+              - /url: https://www.linkedin.com/in/dpcamargo/
+              - generic [ref=f114e99]:
+                - figure [aria-hidden] [ref=f114e100]
+                - generic [ref=f114e101]:
+                  - paragraph [ref=f114e102]: Dario Pompeu de Camargo Neto
+                  - paragraph [ref=f114e104]: Engenheiro de Software | Applied AI Engineer | Go, Python, Java | Sistemas Distribuídos | Cloud
+            - generic [ref=f114e105]:
+              - button [ref=f114e107] [cursor=pointer]:
+                - generic [ref=f114e108]: Resources
+              - button [ref=f114e111] [cursor=pointer]:
+                - generic [ref=f114e112]: Enhance profile
+              - link [ref=f114e115] [cursor=pointer]:
+                - /url: https://www.linkedin.com/
+                - generic [ref=f114e116]: Add section
+              - button [ref=f114e119] [cursor=pointer]:
+                - generic [ref=f114e120]: Open to
+        - main [ref=f114e122]:
+          - generic [ref=f114e124]:
+            - region "Primary content" [ref=f114e125]:
+              - generic [ref=f114e132]:
+                - generic [ref=f114e133]:
+                  - generic [ref=f114e134]:
+                    - button [ref=f114e136] [cursor=pointer]:
+                      - figure [ref=f114e137]:
+                        - img "Cover photo" [ref=f114e138]
+                    - button "Edit background image" [ref=f114e142] [cursor=pointer]
+                  - link [ref=f114e145] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/
+                    - generic "Profile photo" [ref=f114e146]:
+                      - figure [aria-hidden] [ref=f114e148]
+                  - link "Edit profile" [ref=f114e150] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/in/dpcamargo/edit/intro/?language=pt&country=BR&locale=pt-BR
+                - generic [ref=f114e153]:
+                  - generic [ref=f114e154]:
+                    - generic [ref=f114e156]:
+                      - generic [ref=f114e157]:
+                        - link [ref=f114e160] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/
+                          - heading "Dario Pompeu de Camargo Neto" [level=2] [ref=f114e163]
+                        - paragraph [ref=f114e165]: He/Him
+                      - paragraph [ref=f114e166]: Engenheiro de Software | Applied AI Engineer | Go, Python, Java | Sistemas Distribuídos | Cloud
+                      - generic [ref=f114e167]:
+                        - paragraph [ref=f114e168]: São Paulo, Brazil
+                        - paragraph [ref=f114e169]: ·
+                        - paragraph [ref=f114e170]:
+                          - link "Contact info" [ref=f114e171] [cursor=pointer]:
+                            - /url: https://www.linkedin.com/in/dpcamargo/overlay/contact-info/
+                    - generic [ref=f114e173]:
+                      - button [ref=f114e174] [cursor=pointer]:
+                        - generic [ref=f114e175]:
+                          - figure [aria-hidden] [ref=f114e176]
+                          - paragraph [ref=f114e180]: Mercado Livre
+                      - button [ref=f114e181] [cursor=pointer]:
+                        - generic [ref=f114e182]:
+                          - figure [aria-hidden] [ref=f114e183]
+                          - paragraph [ref=f114e187]: FIAP
+                  - generic [ref=f114e188]:
+                    - link [ref=f114e189] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/mynetwork/network-manager/people-follow/followers
+                      - paragraph [ref=f114e190]: 861 followers
+                    - paragraph [aria-hidden] [ref=f114e191]: ·
+                    - link [ref=f114e192] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/mynetwork/invite-connect/connections/
+                      - paragraph [ref=f114e193]: 500+ connections
+                  - generic [ref=f114e197]:
+                    - button "Open to" [ref=f114e199] [cursor=pointer]
+                    - link "Add section" [ref=f114e203] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/
+                    - button "Enhance profile" [ref=f114e207] [cursor=pointer]
+                    - button "Resources" [ref=f114e211] [cursor=pointer]
+                - generic [ref=f114e216]:
+                  - list [ref=f114e218]:
+                    - listitem [ref=f114e219]:
+                      - generic [ref=f114e220]:
+                        - link [ref=f114e221] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/
+                          - generic [ref=f114e222]:
+                            - paragraph [ref=f114e224]:
+                              - strong [ref=f114e226]: Open to work · Recruiters only
+                            - paragraph [ref=f114e228]: São Paulo, SP | Hybrid · Remote
+                            - paragraph [ref=f114e230]: Show details
+                        - button "Edit" [ref=f114e231] [cursor=pointer]
+                    - listitem [ref=f114e234]:
+                      - generic [ref=f114e236]:
+                        - link [ref=f114e237] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/in/dpcamargo/opportunities/services/education/
+                          - generic [ref=f114e238]:
+                            - paragraph [ref=f114e239]:
+                              - strong [ref=f114e240]: Showcase your services
+                              - text: as a section on your profile so your business can be easily discovered.
+                            - paragraph [ref=f114e242]: Add services
+                        - button "Close" [ref=f114e243] [cursor=pointer]
+                  - button "Next" [ref=f114e246] [cursor=pointer]
+            - complementary "Aside" [ref=f114e367]:
+              - generic [ref=f114e373]:
+                - generic [ref=f114e374]:
+                  - heading "Profile language" [level=2] [ref=f114e375]
+                  - link "Edit profile language" [ref=f114e377] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/in/dpcamargo/edit/secondary-language/
+                - generic [ref=f114e381]:
+                  - radio "English" [ref=f114e382] [cursor=pointer]:
+                    - generic [ref=f114e383]:
+                      - checkbox "English"
+                      - generic [ref=f114e384]: English
+                  - radio "Português" [checked] [ref=f114e385] [cursor=pointer]:
+                    - generic [ref=f114e386]:
+                      - checkbox "Português" [checked]
+                      - generic [ref=f114e387]: Português
+                - generic [ref=f114e388]:
+                  - heading "Public profile & URL" [level=2] [ref=f114e389]
+                  - link "Edit Public profile & URL" [ref=f114e391] [cursor=pointer]:
+                    - /url: https://www.linkedin.com/public-profile/settings/?trk=d_flagship3_profile_self_view_public_profile
+                - paragraph [ref=f114e395]: www.linkedin.com/in/dpcamargo
+            - generic "Footer" [ref=f114e398]:
+              - generic [ref=f114e401]:
+                - generic [ref=f114e402]:
+                  - navigation [ref=f114e403]:
+                    - link [ref=f114e404] [cursor=pointer]:
+                      - /url: https://about.linkedin.com/
+                      - paragraph [ref=f114e405]: About
+                    - link [ref=f114e406] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/accessibility/
+                      - paragraph [ref=f114e407]: Accessibility
+                    - link [ref=f114e408] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/talent-solutions?trk=flagship_nav&veh=li-footer-lts-control&src=li-footer
+                      - paragraph [ref=f114e409]: Talent Solutions
+                    - link [ref=f114e410] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/legal/professional-community-policies/
+                      - paragraph [ref=f114e411]: Community Guidelines
+                    - link [ref=f114e412] [cursor=pointer]:
+                      - /url: https://careers.linkedin.com/
+                      - paragraph [ref=f114e413]: Careers
+                    - link [ref=f114e414] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/advertise?trk=n_nav_lms_f&src=li-footer
+                      - paragraph [ref=f114e415]: Marketing Solutions
+                    - button [ref=f114e416] [cursor=pointer]:
+                      - paragraph [ref=f114e418]: Privacy & Terms
+                    - link [ref=f114e420] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/help/linkedin/answer/62931/
+                      - paragraph [ref=f114e421]: Ad Choices
+                    - link [ref=f114e422] [cursor=pointer]:
+                      - /url: https://www.linkedin.com/ad/start/?trk=n_nav_ads_rr
+                      - paragraph [ref=f114e423]: Advertising
+                    - link [ref=f114e424] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/sales-solutions?trk=flagship_nav&veh=li-footer-lss-control&src=li-footer
+                      - paragraph [ref=f114e425]: Sales Solutions
+                    - link [ref=f114e426] [cursor=pointer]:
+                      - /url: https://mobile.linkedin.com/
+                      - paragraph [ref=f114e427]: Mobile
+                    - link [ref=f114e428] [cursor=pointer]:
+                      - /url: https://business.linkedin.com/grow?src=li-footer
+                      - paragraph [ref=f114e429]: Small Business
+                    - link [ref=f114e430] [cursor=pointer]:
+                      - /url: https://safety.linkedin.com/
+                      - paragraph [ref=f114e431]: Safety Center
+                  - paragraph [ref=f114e433]: LinkedIn Corporation © 2026
+                - generic [ref=f114e434]:
+                  - list [ref=f114e435]:
+                    - listitem [ref=f114e436]:
+                      - generic [ref=f114e439]:
+                        - link [ref=f114e440] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/help/linkedin/
+                          - paragraph [ref=f114e441]: Questions?
+                        - paragraph [ref=f114e442]: Visit our Help Center.
+                    - listitem [ref=f114e443]:
+                      - generic [ref=f114e446]:
+                        - link [ref=f114e447] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/mypreferences/d/
+                          - paragraph [ref=f114e448]: Manage your account and privacy
+                        - paragraph [ref=f114e449]: Go to your Settings.
+                    - listitem [ref=f114e450]:
+                      - generic [ref=f114e453]:
+                        - link [ref=f114e454] [cursor=pointer]:
+                          - /url: https://www.linkedin.com/help/linkedin/answer/a1339724/
+                          - paragraph [ref=f114e455]: Recommendation transparency
+                        - paragraph [ref=f114e456]: Learn more about Recommended Content.
+                  - generic [ref=f114e458]:
+                    - paragraph [ref=f114e460]: Select language
+                    - combobox "Select language" [ref=f114e462] [cursor=pointer]:
+                      - option "العربية (Arabic)"
+                      - option "বাংলা (Bangla)"
+                      - option "Čeština (Czech)"
+                      - option "Dansk (Danish)"
+                      - option "Deutsch (German)"
+                      - option "Ελληνικά (Greek)"
+                      - option "English (English)" [selected]
+                      - option "Español (Spanish)"
+                      - option "فارسی (Persian)"
+                      - option "Suomi (Finnish)"
+                      - option "Français (French)"
+                      - option "हिंदी (Hindi)"
+                      - option "Magyar (Hungarian)"
+                      - option "Bahasa Indonesia (Indonesian)"
+                      - option "Italiano (Italian)"
+                      - option "עברית (Hebrew)"
+                      - option "日本語 (Japanese)"
+                      - option "한국어 (Korean)"
+                      - option "मराठी (Marathi)"
+                      - option "Bahasa Malaysia (Malay)"
+                      - option "Nederlands (Dutch)"
+                      - option "Norsk (Norwegian)"
+                      - option "ਪੰਜਾਬੀ (Punjabi)"
+                      - option "Polski (Polish)"
+                      - option "Português (Portuguese)"
+                      - option "Română (Romanian)"
+                      - option "Русский (Russian)"
+                      - option "Svenska (Swedish)"
+                      - option "తెలుగు (Telugu)"
+                      - option "ภาษาไทย (Thai)"
+                      - option "Tagalog (Tagalog)"
+                      - option "Türkçe (Turkish)"
+                      - option "Українська (Ukrainian)"
+                      - option "Tiếng Việt (Vietnamese)"
+                      - option "简体中文 (Chinese (Simplified))"
+                      - option "正體中文 (Chinese (Traditional))"
