@@ -18,7 +18,7 @@
 
 **Purpose**: Schema and policy infrastructure
 
-- [ ] T001 Write `migrations/0006_routing.sql`: `providers`, `routes`, `routing_stats`, `test_author_results` tables; `tasks` gains `lane`, `task_class`, `risk_level`, `triage_source`, `accumulated_usd`, `not_before` columns; `nodes` gains `not_before` column and `test_author` in name CHECK
+- [X] T001 Write `migrations/0006_routing.sql`: `providers`, `routes`, `routing_stats`, `test_author_results` tables; `tasks` gains `lane`, `task_class`, `risk_level`, `triage_source`, `accumulated_usd`, `not_before` columns; `nodes` gains `not_before` column and `test_author` in name CHECK
 
 ---
 
@@ -28,9 +28,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 [P] Create `internal/core/router/health.go`: `ProviderHealth` struct, `ProviderStatus` type (`ok`/`cooling_down`/`quota_low`), `RecordFailure()` (429/plan-limit/5xx/expired-auth → cooldown with reported reset or exponential backoff), `IsEligible()` — with `health_test.go` covering cooldown transitions, auto-recovery, and backoff escalation
-- [ ] T003 [P] Create `internal/core/router/stats.go`: `RoutingStats` type with Beta-prior `alpha`/`beta`, `PSuccess()` method (alpha/(alpha+beta)), `Update()` (success/failure), `Samples()` — with `stats_test.go` covering prior behavior before 10 samples and posterior after
-- [ ] T004 [P] Create `internal/core/policy/policy.go`: `Lane` struct, `Policy` struct, `LoadPolicy()` (parse `policy.yaml`, refuse if lane missing/malformed per FR-009), `CheckBudget()` (FR-010) — with `policy_test.go` covering valid/invalid YAML, missing lanes, budget enforcement
+- [X] T002 [P] Create `internal/core/router/health.go`: `ProviderHealth` struct, `ProviderStatus` type (`ok`/`cooling_down`/`quota_low`), `RecordFailure()` (429/plan-limit/5xx/expired-auth → cooldown with reported reset or exponential backoff), `IsEligible()` — with `health_test.go` covering cooldown transitions, auto-recovery, and backoff escalation
+- [X] T003 [P] Create `internal/core/router/stats.go`: `RoutingStats` type with Beta-prior `alpha`/`beta`, `PSuccess()` method (alpha/(alpha+beta)), `Update()` (success/failure), `Samples()` — with `stats_test.go` covering prior behavior before 10 samples and posterior after
+- [X] T004 [P] Create `internal/core/policy/policy.go`: `Lane` struct, `Policy` struct, `LoadPolicy()` (parse `policy.yaml`, refuse if lane missing/malformed per FR-009), `CheckBudget()` (FR-010) — with `policy_test.go` covering valid/invalid YAML, missing lanes, budget enforcement
 
 **Checkpoint**: Core types ready — user story implementation can now begin
 
@@ -42,11 +42,11 @@
 
 **Independent Test**: Force a 429 on the primary route and confirm automatic failover; confirm provider resumes after cooldown; confirm node parks when all routes are down.
 
-- [ ] T005 [US1] Create `internal/core/router/router.go`: `Router` type, `Select()` method (FR-002/003) — ordered candidate list per (role, task class, risk, excluded families), filtered by policy, provider health, and family rules. `argmin cost / P(verified success)` scoring. `ErrNoEligibleRoute` when no candidate qualifies. — with `router_test.go` covering family exclusion, cooldown filtering, cost-aware selection, and no-eligible-route error
-- [ ] T006 [US1] Implement provider cooldown recording in `internal/core/router/health.go`: `RecordFailure()` with reported-reset-time support and exponential backoff fallback (FR-004). Auto-recovery when `cooldown_until` elapses (FR-004).
-- [ ] T007 [US1] Add SQLite persistence for provider health and routing stats in `internal/adapters/sqlite/routing.go`: `SaveProviderHealth()`, `LoadProviderHealth()`, `SaveRoutingStats()`, `LoadRoutingStats()`, `RecordRouteOutcome()` (FR-011) — with `routing_test.go` against real SQLite
-- [ ] T008 [US1] Implement node parking in `internal/core/engine/engine.go`: when `Select()` returns `ErrNoEligibleRoute`, set `not_before` on the node (FR-005), leave status `pending`, don't count an attempt. Reconciler picks up when `not_before` has passed. Operator notified via ntfy only if stall >1h.
-- [ ] T009 [US1] Wire router into the engine's dispatch path in `internal/core/engine/engine.go`: call `router.Select()` before each node dispatch, handle `ErrNoEligibleRoute` (park), handle cooldown recording on provider errors (FR-001/004). Integrate with `cmd/foreman/serve.go` wiring.
+- [X] T005 [US1] Create `internal/core/router/router.go`: `Router` type, `Select()` method (FR-002/003) — ordered candidate list per (role, task class, risk, excluded families), filtered by policy, provider health, and family rules. `argmin cost / P(verified success)` scoring. `ErrNoEligibleRoute` when no candidate qualifies. — with `router_test.go` covering family exclusion, cooldown filtering, cost-aware selection, and no-eligible-route error
+- [X] T006 [US1] Implement provider cooldown recording in `internal/core/router/health.go`: `RecordFailure()` with reported-reset-time support and exponential backoff fallback (FR-004). Auto-recovery when `cooldown_until` elapses (FR-004).
+- [X] T007 [US1] Add SQLite persistence for provider health and routing stats in `internal/adapters/sqlite/routing.go`: `SaveProviderHealth()`, `LoadProviderHealth()`, `SaveRoutingStats()`, `LoadRoutingStats()`, `RecordRouteOutcome()` (FR-011) — with `routing_test.go` against real SQLite
+- [X] T008 [US1] Implement node parking in `internal/core/engine/engine.go`: when `Select()` returns `ErrNoEligibleRoute`, set `not_before` on the node (FR-005), leave status `pending`, don't count an attempt. Reconciler picks up when `not_before` has passed. Operator notified via ntfy only if stall >1h.
+- [X] T009 [US1] Wire router into the engine's dispatch path in `internal/core/engine/engine.go`: call `router.Select()` before each node dispatch, handle `ErrNoEligibleRoute` (park), handle cooldown recording on provider errors (FR-001/004). Integrate with `cmd/foreman/serve.go` wiring.
 
 **Checkpoint**: Provider failover, cooldown auto-recovery, and node parking all work
 
