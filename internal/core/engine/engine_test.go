@@ -86,6 +86,15 @@ func (s *fakeStore) UpdateNodeStatus(ctx context.Context, id string, status task
 	return nil
 }
 
+func (s *fakeStore) ParkNode(ctx context.Context, id string, until time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n := s.nodes[id]
+	n.NotBefore = &until
+	s.nodes[id] = n
+	return nil
+}
+
 func (s *fakeStore) RecordTaskRun(ctx context.Context, r task.Run) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dpcamargo/foreman/internal/adapters/sqlite"
 	"github.com/dpcamargo/foreman/internal/core/control"
@@ -61,6 +62,9 @@ func (s *fakeTaskStore) NodesForTask(ctx context.Context, taskID string) ([]task
 	return s.nodes[taskID], nil
 }
 func (s *fakeTaskStore) UpdateNodeStatus(ctx context.Context, id string, status task.NodeStatus) error {
+	return nil
+}
+func (s *fakeTaskStore) ParkNode(ctx context.Context, id string, until time.Time) error {
 	return nil
 }
 func (s *fakeTaskStore) RecordTaskRun(ctx context.Context, r task.Run) error {

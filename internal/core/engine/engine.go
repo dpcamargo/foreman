@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"time"
@@ -32,6 +33,18 @@ type Config struct {
 	// attempt in flight, leaving the task running for a later resume. nil is a no-op, for
 	// the same reason as ApprovalGate (research.md R7 addendum).
 	PauseCheck func(taskID string) bool
+	// RouteSelector, if set, picks the model family before each implement attempt
+	// (FR-002/003). When Select returns ErrNoEligibleRoute the engine parks the node
+	// (sets not_before, leaves it pending, counts no attempt) instead of failing (FR-005).
+	// nil preserves the pre-004 behavior: e.cfg.DefaultFamily with family switches
+	// from the ladder (specs/004-routing-test-first/research.md R1/R9).
+	RouteSelector RouteSelector
+	// OnProviderError, if set, records a provider-health failure signal (429/plan-limit/
+	// 5xx/expired-auth) so the router can put the provider in cooldown (FR-004). nil is
+	// a no-op, for the same reason as ApprovalGate.
+	OnProviderError func(family string, err error)
+	// ParkedNotify, if set, is called when a node is parked. nil is a no-op.
+	ParkedNotify func(taskID, nodeID string, until time.Time)
 }
 
 type Engine struct {
@@ -179,6 +192,40 @@ func (e *Engine) RunTask(ctx context.Context, params RunParams) (TaskReport, err
 				SpecSummary: spec.Summary,
 				CreatedAt:   now,
 			}, nil
+		}
+		// Route selection (FR-002/003). nil RouteSelector preserves pre-004 behavior.
+		if e.cfg.RouteSelector != nil {
+			family, selErr := e.cfg.RouteSelector.Select(ctx, RouteSelectRequest{
+				Role:             "implementer",
+				ExcludedFamilies: nil,
+			})
+			if selErr != nil {
+				if errors.Is(selErr, ErrNoEligibleRoute) {
+					// Park the node rather than fail it (FR-005): no attempt counted,
+					// status stays pending, retried after not_before elapses.
+					until := time.Now().UTC().Add(1 * time.Minute)
+					_ = e.cfg.Store.UpdateNodeStatus(ctx, implNode.ID, task.NodeStatusPending)
+					_ = e.cfg.Store.ParkNode(ctx, implNode.ID, until)
+					if e.cfg.ParkedNotify != nil {
+						e.cfg.ParkedNotify(tsk.ID, implNode.ID, until)
+					}
+					return TaskReport{
+						TaskID:      tsk.ID,
+						Status:      task.StatusRunning,
+						RepoURL:     tsk.RepoURL,
+						BaseCommit:  tsk.BaseCommit,
+						RequestText: tsk.RequestText,
+						Attempts:    attemptNum - 1,
+						LadderRung:  currentRung,
+						TokensTotal: totalTokens,
+						WallTotal:   time.Since(startTime),
+						SpecSummary: spec.Summary,
+						CreatedAt:   now,
+					}, nil
+				}
+				return TaskReport{}, fmt.Errorf("route selection: %w", selErr)
+			}
+			currentFamily = family
 		}
 		impl, ok := e.cfg.Implementers[currentFamily]
 		if !ok {

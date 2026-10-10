@@ -158,8 +158,17 @@ type Node struct {
 	Status    NodeStatus
 	StartedAt *time.Time
 	EndedAt   *time.Time
+	// NotBefore is set when the node is parked because all routes are cooling
+	// down (FR-005). The node stays pending and is retried after this time.
+	NotBefore *time.Time
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+// Park sets the node's not_before timestamp without counting an attempt (FR-005).
+func (n *Node) Park(until time.Time) {
+	n.NotBefore = &until
+	n.UpdatedAt = until
 }
 
 func (n *Node) Start(now time.Time) error {

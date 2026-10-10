@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"time"
 
@@ -129,4 +130,23 @@ type ReviewFinding struct {
 type WorkspaceCloner interface {
 	PrepareWorkspace(ctx context.Context, taskID, runID, repoURL, baseCommit string) (string, error)
 	DestroyWorkspace(ctx context.Context, dir string) error
+}
+
+// RouteSelectRequest describes a routing request (FR-002).
+type RouteSelectRequest struct {
+	Role             string
+	TaskClass        string
+	Risk             string
+	ExcludedFamilies []string
+}
+
+// ErrNoEligibleRoute is returned by a RouteSelector when all candidate routes
+// are unavailable (cooling down, disabled, or excluded). The engine parks the
+// node rather than failing it (FR-005).
+var ErrNoEligibleRoute = errors.New("no eligible route")
+
+// RouteSelector picks the model family for a node dispatch (FR-002/003).
+// Implementations: internal/core/router (production), test fakes.
+type RouteSelector interface {
+	Select(ctx context.Context, req RouteSelectRequest) (string, error)
 }

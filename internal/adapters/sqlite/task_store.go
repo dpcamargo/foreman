@@ -173,13 +173,13 @@ func (s *Store) UpdateTaskStatus(ctx context.Context, id string, status task.Tas
 
 func (s *Store) Node(ctx context.Context, id string) (task.Node, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, task_id, name, step_order, status, started_at, ended_at, created_at, updated_at
+		SELECT id, task_id, name, step_order, status, started_at, ended_at, not_before, created_at, updated_at
 		FROM nodes WHERE id = ?;`, id)
 	var n task.Node
 	var name, st string
-	var started, ended sql.NullString
+	var started, ended, notBefore sql.NullString
 	var created, updated string
-	err := row.Scan(&n.ID, &n.TaskID, &name, &n.StepOrder, &st, &started, &ended, &created, &updated)
+	err := row.Scan(&n.ID, &n.TaskID, &name, &n.StepOrder, &st, &started, &ended, &notBefore, &created, &updated)
 	if errors.Is(err, sql.ErrNoRows) {
 		return task.Node{}, task.ErrNotFound
 	}
@@ -198,12 +198,16 @@ func (s *Store) Node(ctx context.Context, id string) (task.Node, error) {
 		t, _ := time.Parse(tsLayout, ended.String)
 		n.EndedAt = &t
 	}
+	if notBefore.Valid {
+		t, _ := time.Parse(tsLayout, notBefore.String)
+		n.NotBefore = &t
+	}
 	return n, nil
 }
 
 func (s *Store) NodesForTask(ctx context.Context, taskID string) ([]task.Node, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, task_id, name, step_order, status, started_at, ended_at, created_at, updated_at
+		SELECT id, task_id, name, step_order, status, started_at, ended_at, not_before, created_at, updated_at
 		FROM nodes WHERE task_id = ? ORDER BY step_order ASC;`, taskID)
 	if err != nil {
 		return nil, err
@@ -213,9 +217,9 @@ func (s *Store) NodesForTask(ctx context.Context, taskID string) ([]task.Node, e
 	for rows.Next() {
 		var n task.Node
 		var name, st string
-		var started, ended sql.NullString
+		var started, ended, notBefore sql.NullString
 		var created, updated string
-		if err := rows.Scan(&n.ID, &n.TaskID, &name, &n.StepOrder, &st, &started, &ended, &created, &updated); err != nil {
+		if err := rows.Scan(&n.ID, &n.TaskID, &name, &n.StepOrder, &st, &started, &ended, &notBefore, &created, &updated); err != nil {
 			return nil, err
 		}
 		n.Name = task.NodeName(name)
@@ -229,6 +233,10 @@ func (s *Store) NodesForTask(ctx context.Context, taskID string) ([]task.Node, e
 		if ended.Valid {
 			t, _ := time.Parse(tsLayout, ended.String)
 			n.EndedAt = &t
+		}
+		if notBefore.Valid {
+			t, _ := time.Parse(tsLayout, notBefore.String)
+			n.NotBefore = &t
 		}
 		nodes = append(nodes, n)
 	}
@@ -267,6 +275,24 @@ func (s *Store) UpdateNodeStatus(ctx context.Context, id string, status task.Nod
 			return err
 		}
 		return s.insertEvent(ctx, tx, "node", id, &oldStatus, string(status), nil)
+	})
+}
+
+// ParkNode sets the node's not_before timestamp without changing its status or
+// counting an attempt (FR-005). The reconciler retries after not_before elapses.
+func (s *Store) ParkNode(ctx context.Context, id string, until time.Time) error {
+	at := s.clock()
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			UPDATE nodes
+			SET not_before = ?,
+			    updated_at = ?
+			WHERE id = ?;`,
+			until.Format(tsLayout), at.Format(tsLayout), id)
+		if err != nil {
+			return err
+		}
+		return s.insertEvent(ctx, tx, "node", id, nil, "parked", nil)
 	})
 }
 
